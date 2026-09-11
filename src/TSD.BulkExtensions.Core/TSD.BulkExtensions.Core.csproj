@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>TSD.BulkExtensions.Core</PackageId>
+    <Description>Provider-independent core of TSD.BulkExtensions: BulkConfig, DbContext bulk extension methods, EF Core metadata mapping and the provider adapter contract.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <!-- Only for the SqlBulkCopyOptions type on BulkConfig, kept identical to EFCore.BulkExtensions so call sites compile unchanged. -->
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+  </ItemGroup>
+
+</Project>

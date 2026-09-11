@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>TSD.BulkExtensions.SqlServer</PackageId>
+    <Description>SQL Server adapter for TSD.BulkExtensions: SqlBulkCopy streaming plus MERGE with OUTPUT for Insert, Update, Delete, Upsert and Read.</Description>
+    <RootNamespace>TSD.BulkExtensions.SqlServer</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TSD.BulkExtensions.Core\TSD.BulkExtensions.Core.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" />
+    <PackageReference Include="Microsoft.Data.SqlClient" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="ILLink.Descriptors.xml" LogicalName="ILLink.Descriptors.xml" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The adapter is discovered by name from TSD.BulkExtensions.Core (no static reference), so keep it when trimming. -->
+<linker>
+  <assembly fullname="TSD.BulkExtensions.PostgreSql">
+    <type fullname="TSD.BulkExtensions.PostgreSql.PostgreSqlBulkAdapter" preserve="all" />
+  </assembly>
+</linker>
