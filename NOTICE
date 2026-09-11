@@ -1,0 +1,20 @@
+TSD.BulkExtensions
+Copyright (c) 2026 Thai Son (TSD)
+
+This product is a clean-room reimplementation of bulk operations for EF Core.
+Its public API shape (method signatures and BulkConfig option names), its test
+model, and selected metadata-mapping logic are derived from the MIT-licensed
+sources below. No code from EFCore.BulkExtensions releases published after
+2023-01-22 (dual-license era) has been used.
+
+  EFCore.BulkExtensions (up to commit 5bf938a422, 2023-01-18)
+    https://github.com/borisdj/EFCore.BulkExtensions
+    Copyright (c) 2017 borisdj
+    Licensed under the MIT License.
+
+  EFCore.BulkExtensions.MIT
+    https://github.com/videokojot/EFCore.BulkExtensions.MIT
+    Copyright (c) 2023 Jindrich Cincibuch
+    Licensed under the MIT License.
+
+The full MIT license text is in the LICENSE file at the root of this repository.
