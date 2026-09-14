@@ -34,12 +34,14 @@ public class BulkConfig
     public bool EnableStreaming { get; set; }
 
     /// <summary>
-    /// Create the staging table as a session temp table (<c>#Name</c> on SQL Server, <c>TEMP TABLE</c> on PostgreSQL) instead of a
-    /// regular table in the target schema. Requires an open transaction on the context for every operation except a plain insert.
+    /// Kept for compatibility with EFCore.BulkExtensions. Staging always uses a session-local temp table
+    /// (<c>#Name</c> on SQL Server, <c>TEMP TABLE</c> on PostgreSQL) held on the context's open connection, so the option has no effect.
     /// </summary>
     public bool UseTempDB { get; set; }
 
-    /// <summary>Append a random suffix to the staging table name so concurrent operations on the same table do not collide. Default <c>true</c>.</summary>
+    /// <summary>
+    /// Kept for compatibility with EFCore.BulkExtensions. The staging table name always gets a per-operation suffix, so the option has no effect.
+    /// </summary>
     public bool UniqueTableNameTempDb { get; set; } = true;
 
     /// <summary>Write to this table instead of the one the entity is mapped to. Accepts <c>schema.table</c>.</summary>
@@ -78,7 +80,11 @@ public class BulkConfig
     /// <summary>Supplies the value of a shadow property for an entity. Receives the entity and the property name.</summary>
     public Func<object, string, object?>? ShadowPropertyValue { get; set; }
 
-    /// <summary>Treat rowversion/timestamp columns like ordinary columns instead of excluding them from writes.</summary>
+    /// <summary>
+    /// Treat concurrency-token columns like ordinary columns instead of excluding them from writes. Only meaningful when the
+    /// property is flagged as a concurrency token but the column is not a real server-maintained rowversion/timestamp
+    /// (SQL Server refuses explicit values for those).
+    /// </summary>
     public bool IgnoreRowVersion { get; set; }
 
     /// <summary>Emit <c>WITH (HOLDLOCK)</c> on the MERGE statement (SQL Server only). Default <c>true</c>.</summary>
@@ -87,7 +93,12 @@ public class BulkConfig
     /// <summary>Flags passed to SqlBulkCopy (SQL Server only). Ignored by other providers.</summary>
     public SqlBulkCopyOptions SqlBulkCopyOptions { get; set; } = SqlBulkCopyOptions.Default;
 
-    /// <summary>Also insert/update the navigation graph reachable from each entity, parents before children, in one transaction.</summary>
+    /// <summary>
+    /// Also insert/update the navigation graph reachable from each entity, parents before children, in one transaction.
+    /// Supported with Insert, InsertOrUpdate and Update. Implies <see cref="SetOutputIdentity"/>, <see cref="PreserveInsertOrder"/>
+    /// and <see cref="EnableShadowProperties"/>. The include/exclude lists apply to every entity type in the graph; names a
+    /// type does not have are skipped for that type.
+    /// </summary>
     public bool IncludeGraph { get; set; }
 
     /// <summary>Populate <see cref="StatsInfo"/> with inserted/updated/deleted counts after a merge-style operation.</summary>
@@ -95,6 +106,12 @@ public class BulkConfig
 
     /// <summary>Row counts, set on the caller's instance when <see cref="CalculateStats"/> is enabled.</summary>
     public StatsInfo? StatsInfo { get; set; }
+
+    /// <summary>
+    /// Skip, instead of rejecting, include/exclude names that a particular entity type does not have. Set by the graph
+    /// executor, which applies one option set to every type in the graph.
+    /// </summary>
+    internal bool IgnoreUnknownPropertyNames { get; set; }
 
     /// <summary>Shallow copy used as the effective configuration of one operation, so the caller's instance stays untouched.</summary>
     internal BulkConfig Clone() => (BulkConfig)MemberwiseClone();
@@ -128,9 +145,10 @@ public class BulkConfig
 
         if (IncludeGraph)
         {
-            if (operationType is not (OperationType.Insert or OperationType.InsertOrUpdate or OperationType.InsertOrUpdateOrDelete or OperationType.Update))
+            // Sync is excluded on purpose: a per-type pass would delete every row of that table not in the pass.
+            if (operationType is not (OperationType.Insert or OperationType.InsertOrUpdate or OperationType.Update))
             {
-                throw new InvalidBulkConfigException($"{nameof(IncludeGraph)} only supports Insert, InsertOrUpdate, InsertOrUpdateOrDelete and Update.");
+                throw new InvalidBulkConfigException($"{nameof(IncludeGraph)} only supports Insert, InsertOrUpdate and Update.");
             }
 
             // Children need the generated keys of their parents, and the mapping is positional.

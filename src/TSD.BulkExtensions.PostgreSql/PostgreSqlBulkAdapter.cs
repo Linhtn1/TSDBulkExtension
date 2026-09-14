@@ -1,3 +1,7 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+
 namespace TSD.BulkExtensions.PostgreSql;
 
 /// <summary>
@@ -8,6 +12,15 @@ public sealed class PostgreSqlBulkAdapter : IBulkAdapter
 {
     /// <inheritdoc />
     public string ProviderNameSuffix => "PostgreSQL";
+
+    /// <inheritdoc />
+    public bool IsIdentityColumn(IProperty property)
+    {
+        ArgumentNullException.ThrowIfNull(property);
+        return property.GetValueGenerationStrategy() is NpgsqlValueGenerationStrategy.IdentityAlwaysColumn
+            or NpgsqlValueGenerationStrategy.IdentityByDefaultColumn
+            or NpgsqlValueGenerationStrategy.SerialColumn;
+    }
 
     /// <inheritdoc />
     public void Execute<T>(BulkOperation<T> operation) where T : class

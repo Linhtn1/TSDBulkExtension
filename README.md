@@ -19,11 +19,35 @@ One package per provider, each shipping `net6.0`, `net8.0` and `net10.0` builds 
 
 Options that are not supported are not present on `BulkConfig`, so unsupported usage fails at compile time rather than silently at runtime. The library never mutates the `BulkConfig` you pass in; only `StatsInfo` is written back.
 
+Behavioural notes:
+
+- Staging always uses a session-local temp table held on the context's open connection, so no transaction is required and `UseTempDB` is accepted but has no effect.
+- Generated values are mapped back by source row index, not by insertion order; `PreserveInsertOrder` only asks SQL Server to assign identities in list order.
+- `BulkInsertOrUpdateOrDelete` deletes every row of the table that is not in the list. Upstream's `SynchronizeFilter` is not supported, and the operation cannot be combined with `IncludeGraph`.
+- Without an ambient transaction, staged operations open their own so the statement and the write-back of generated values succeed or fail together.
+- On EF Core 6 the `IQueryable` batch methods (`BatchDelete`, `BatchUpdate`) are compile errors pointing to the ABP EFPlus repository methods; on EF Core 8/10 they wrap `ExecuteDelete` / `ExecuteUpdate`.
+- Owned types mapped to their own table are not supported (a clear exception with `IncludeGraph`, columns ignored otherwise).
+
+## Status
+
+| Provider | Insert | Insert + generated keys | Update | Delete | Upsert | Sync | Read | Truncate | IncludeGraph | Batch (IQueryable) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| SQL Server | done | done | done | done | done | done | done | done | done | EF 8/10 |
+| PostgreSQL | planned (P2) | | | | | | | | done (provider-agnostic) | EF 8/10 |
+
+How it works, in one paragraph: a plain insert streams the list into the table with `SqlBulkCopy` through a forward-only
+`DbDataReader` (no `DataTable`). Every other operation streams into a session-local temp table together with each row's
+position, runs a single `MERGE` (or `SELECT` for reads) against it, and reads generated values back through an `OUTPUT`
+table keyed by that position, so identities, server defaults and rowversions land on the right entity regardless of
+insertion order. `IncludeGraph` walks the navigations, saves one entity type per pass parents-first inside one transaction,
+and copies generated keys into the children's foreign keys between passes. Details in `docs/bulk-extension-internals.html`.
+
 ## Repository layout
 
 ```
 src/        library projects
 tests/      xunit + Testcontainers (Docker required)
+benchmarks/ BenchmarkDotNet: TSD vs EFCore.BulkExtensions 6.5.6 (last MIT release) vs SaveChanges
 samples/    ABP BulkRepository integration sample
 docs/       design notes (see PLAN.md and docs/bulk-extension-internals.html)
 tools/      offline usage scanner for consumer solutions

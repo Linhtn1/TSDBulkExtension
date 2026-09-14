@@ -45,19 +45,31 @@ public static class DbContextBulkExtensions
 
     // ---- InsertOrUpdateOrDelete (sync) -----------------------------------------------------------------------------
 
-    /// <summary>Makes the table match the list: inserts, updates and deletes rows that are not in the list.</summary>
+    /// <summary>
+    /// Makes the whole table match the list: inserts missing rows, updates matched ones and <b>deletes every other row of the table</b>.
+    /// There is no filter; an empty list empties the table. Entities with duplicate keys in the list make the statement fail.
+    /// </summary>
     public static void BulkInsertOrUpdateOrDelete<T>(this DbContext context, IList<T> entities, BulkConfig? bulkConfig = null, Action<decimal>? progress = null, Type? type = null) where T : class
         => BulkExecutor.Execute(context, type, entities, OperationType.InsertOrUpdateOrDelete, bulkConfig, progress);
 
-    /// <summary>Makes the table match the list: inserts, updates and deletes rows that are not in the list.</summary>
+    /// <summary>
+    /// Makes the whole table match the list: inserts missing rows, updates matched ones and <b>deletes every other row of the table</b>.
+    /// There is no filter; an empty list empties the table. Entities with duplicate keys in the list make the statement fail.
+    /// </summary>
     public static Task BulkInsertOrUpdateOrDeleteAsync<T>(this DbContext context, IList<T> entities, BulkConfig? bulkConfig = null, Action<decimal>? progress = null, Type? type = null, CancellationToken cancellationToken = default) where T : class
         => BulkExecutor.ExecuteAsync(context, type, entities, OperationType.InsertOrUpdateOrDelete, bulkConfig, progress, cancellationToken);
 
-    /// <summary>Makes the table match the list: inserts, updates and deletes rows that are not in the list.</summary>
+    /// <summary>
+    /// Makes the whole table match the list: inserts missing rows, updates matched ones and <b>deletes every other row of the table</b>.
+    /// There is no filter; an empty list empties the table. Entities with duplicate keys in the list make the statement fail.
+    /// </summary>
     public static void BulkInsertOrUpdateOrDelete<T>(this DbContext context, IList<T> entities, Action<BulkConfig>? bulkAction, Action<decimal>? progress = null, Type? type = null) where T : class
         => BulkInsertOrUpdateOrDelete(context, entities, BulkExecutor.ToConfig(bulkAction), progress, type);
 
-    /// <summary>Makes the table match the list: inserts, updates and deletes rows that are not in the list.</summary>
+    /// <summary>
+    /// Makes the whole table match the list: inserts missing rows, updates matched ones and <b>deletes every other row of the table</b>.
+    /// There is no filter; an empty list empties the table. Entities with duplicate keys in the list make the statement fail.
+    /// </summary>
     public static Task BulkInsertOrUpdateOrDeleteAsync<T>(this DbContext context, IList<T> entities, Action<BulkConfig>? bulkAction, Action<decimal>? progress = null, Type? type = null, CancellationToken cancellationToken = default) where T : class
         => BulkInsertOrUpdateOrDeleteAsync(context, entities, BulkExecutor.ToConfig(bulkAction), progress, type, cancellationToken);
 
