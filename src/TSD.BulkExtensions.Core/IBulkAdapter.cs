@@ -1,3 +1,5 @@
+using Microsoft.EntityFrameworkCore.Metadata;
+
 namespace TSD.BulkExtensions;
 
 /// <summary>
@@ -11,6 +13,12 @@ public interface IBulkAdapter
     /// Compared case-insensitively.
     /// </summary>
     string ProviderNameSuffix { get; }
+
+    /// <summary>
+    /// Whether the column backing <paramref name="property"/> is a server-assigned identity/serial column.
+    /// Identity detection is provider-specific (SQL Server value generation strategy, PostgreSQL identity/serial).
+    /// </summary>
+    bool IsIdentityColumn(IProperty property);
 
     /// <summary>Executes the operation synchronously.</summary>
     void Execute<T>(BulkOperation<T> operation) where T : class;

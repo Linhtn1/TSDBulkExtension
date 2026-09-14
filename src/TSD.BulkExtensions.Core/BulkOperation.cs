@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TSD.BulkExtensions.Metadata;
 
 namespace TSD.BulkExtensions;
 
@@ -22,7 +23,11 @@ public sealed class BulkOperation<T> where T : class
         OperationType = operationType;
         Config = config;
         Progress = progress;
+        Values = new BulkValueContext(context, config.ShadowPropertyValue);
     }
+
+    /// <summary>Per-operation value services for <see cref="ColumnMap"/>: the context and the shadow-value resolver.</summary>
+    public BulkValueContext Values { get; }
 
     /// <summary>The context whose connection and transaction the operation runs on.</summary>
     public DbContext Context { get; }

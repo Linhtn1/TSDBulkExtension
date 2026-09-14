@@ -1,5 +1,12 @@
 namespace TSD.BulkExtensions.Tests.Model;
 
+public enum ItemStatus
+{
+    Draft = 0,
+    Active = 1,
+    Archived = 2,
+}
+
 /// <summary>Plain entity with a database-generated identity key. The common case in TruePos (ABP Entity&lt;long&gt;).</summary>
 public class Item
 {
@@ -10,6 +17,12 @@ public class Item
     public decimal Price { get; set; }
     public DateTime TimeUpdated { get; set; }
     public bool IsDeleted { get; set; }
+
+    /// <summary>Stored as a string through a value converter.</summary>
+    public ItemStatus Status { get; set; }
+
+    /// <summary>Rowversion on SQL Server; ignored in the PostgreSQL model.</summary>
+    public byte[]? Version { get; set; }
 
     public ICollection<ItemHistory> Histories { get; set; } = new List<ItemHistory>();
 }
@@ -22,6 +35,32 @@ public class ItemHistory
     public Item? Item { get; set; }
     public string Remark { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+}
+
+/// <summary>Small table owned by the sync/truncate tests, which affect every row of it.</summary>
+public class SyncRow
+{
+    public long Id { get; set; }
+    public string Key { get; set; } = string.Empty;
+    public int Value { get; set; }
+}
+
+/// <summary>TPH base with a private key setter: exercises derived-only columns on a base-typed list and write-back through a non-public setter.</summary>
+public abstract class Payment
+{
+    public long Id { get; private set; }
+    public string Reference { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+}
+
+public class CardPayment : Payment
+{
+    public string CardLast4 { get; set; } = string.Empty;
+}
+
+public class CashPayment : Payment
+{
+    public string Register { get; set; } = string.Empty;
 }
 
 /// <summary>Parent of a two-level graph for IncludeGraph tests.</summary>

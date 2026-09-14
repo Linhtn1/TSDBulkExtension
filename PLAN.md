@@ -1,6 +1,20 @@
 # TSD.BulkExtensions — Kế hoạch thay thế EFCore.BulkExtensions
 
-Ngày: 2026-09-11. Trạng thái: **P0 xong** (branch `feature/scaffold`, chưa commit). Kế tiếp: P1 SQL Server adapter.
+Ngày: 2026-09-11. Cập nhật 2026-09-14. Trạng thái: **P0 merged (PR #1), P1 xong** trên branch `feature/sqlserver-adapter`. Kế tiếp: P2 PostgreSQL adapter.
+
+P1 đã dựng (SQL Server đầy đủ):
+- `Core/Metadata`: `EntityTableMap`, `ColumnMap`, `PropertyAccessor` (đọc model EF thành bản đồ cột, include/exclude, khoá match, identity, default, rowversion, owned, discriminator, converter).
+- `Core/Streaming/EntityDataReader`: `DbDataReader` stream + cột `__Index`.
+- `Core/Transactions/ConnectionScope`: dùng lại connection/transaction của DbContext.
+- `Core/Output/OutputWriteBack`: ghi giá trị server sinh về entity theo `__Index`, thống kê I/U/D.
+- `Core/Graph`: `EntityGraphWalker` + `GraphExecutor` (IncludeGraph theo lượt, cha trước con, FK lan truyền, transaction bao ngoài). Provider-agnostic.
+- `Core/Batch/QueryableBatchExtensions`: `BatchDelete/BatchUpdate` bọc `ExecuteDelete/ExecuteUpdate` (EF 8 dùng `SetPropertyCalls`, EF 10 dùng `UpdateSettersBuilder`); EF 6 ném `NotSupportedException`.
+- `SqlServer`: `SqlServerBulkAdapter` (đường nhanh SqlBulkCopy), `SqlServerSqlBuilder` (T-SQL), `SqlServerMergeExecutor` (#temp + MERGE OUTPUT, Read, Truncate).
+- `benchmarks/`: BenchmarkDotNet so với EFCore.BulkExtensions 6.5.6 và SaveChanges.
+- Test: 325 (SQL Server 78/80/80 theo net6/8/10, PostgreSQL 29 × 3).
+- Gate 2 (code-review high) trên P1: 10 finding đã fix (TPH/private setter qua MemberInfo của EF, proxy qua `FindRuntimeEntityType`, cấm IncludeGraph+Sync, no-op MERGE bằng biến, BulkRead tôn trọng include list, stats gộp qua graph, staged op tự mở transaction, owned type bảng riêng báo lỗi rõ, map cache độc lập delegate shadow) + cleanup (clustered `__Index`, gộp CREATE/DROP, batch net6 thành lỗi compile, pin upstream vào `benchmarks/Directory.Packages.props`).
+
+Khác so với thiết kế ban đầu: bảng tạm luôn là `#temp` session-local (không cần transaction, `UseTempDB` thành no-op); ánh xạ Id theo `__Index` thay vì thứ tự MERGE.
 
 P0 đã dựng: `TSD.BulkExtensions.slnx`, CPM 3 dòng EF, Core (BulkConfig Tier 1, DbContextBulkExtensions đủ 30 signature, BulkExecutor, BulkAdapterRegistry, IBulkAdapter), adapter SqlServer/PostgreSql stub, Tests.Shared (model Item/ItemHistory Guid-default/Order/OrderLine + SmokeTestsBase), 2 test project TestContainers. CI GitHub Actions tạm bỏ theo quyết định của Tiền bối (thêm lại khi token có scope `workflow`). Build 0 error/0 warning, 66/66 test pass (11 × 2 provider × 3 TFM) sau Gate 2.
 

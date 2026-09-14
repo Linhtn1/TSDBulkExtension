@@ -104,15 +104,6 @@ public abstract class SmokeTestsBase<TAdapter> where TAdapter : IBulkAdapter
     }
 
     [Fact]
-    public async Task UseTempDB_outside_a_transaction_is_rejected()
-    {
-        await using var context = CreateContext();
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            context.BulkInsertOrUpdateAsync(OneItem(), opt => opt.UseTempDB = true));
-    }
-
-    [Fact]
     public void IncludeGraph_implies_output_identity_and_insert_order()
     {
         var config = new BulkConfig { IncludeGraph = true, PreserveInsertOrder = false, SetOutputIdentity = false };

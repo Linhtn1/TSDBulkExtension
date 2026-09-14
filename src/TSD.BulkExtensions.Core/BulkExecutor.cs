@@ -1,5 +1,5 @@
-using System.Data;
 using Microsoft.EntityFrameworkCore;
+using TSD.BulkExtensions.Graph;
 
 namespace TSD.BulkExtensions;
 
@@ -19,7 +19,16 @@ internal static class BulkExecutor
             return;
         }
 
-        BulkAdapterRegistry.Resolve(context).Execute(operation);
+        var adapter = BulkAdapterRegistry.Resolve(context);
+        if (operation.Config.IncludeGraph)
+        {
+            GraphExecutor.Execute(operation, adapter);
+        }
+        else
+        {
+            adapter.Execute(operation);
+        }
+
         PublishResults(operation, config);
     }
 
@@ -32,7 +41,16 @@ internal static class BulkExecutor
             return;
         }
 
-        await BulkAdapterRegistry.Resolve(context).ExecuteAsync(operation, cancellationToken).ConfigureAwait(false);
+        var adapter = BulkAdapterRegistry.Resolve(context);
+        if (operation.Config.IncludeGraph)
+        {
+            await GraphExecutor.ExecuteAsync(operation, adapter, cancellationToken).ConfigureAwait(false);
+        }
+        else
+        {
+            await adapter.ExecuteAsync(operation, cancellationToken).ConfigureAwait(false);
+        }
+
         PublishResults(operation, config);
     }
 
@@ -48,7 +66,6 @@ internal static class BulkExecutor
 
         var effective = (config ?? new BulkConfig()).Clone();
         effective.Prepare(operationType);
-        ValidateAgainstContext(context, effective, operationType);
 
         // Sync and Truncate act on the whole table and are meaningful with an empty list.
         var tableWide = operationType is OperationType.InsertOrUpdateOrDelete or OperationType.Truncate;
@@ -58,22 +75,6 @@ internal static class BulkExecutor
         }
 
         return new BulkOperation<T>(context, type ?? typeof(T), entities, operationType, effective, progress);
-    }
-
-    /// <summary>Rules that need the context, not just the options.</summary>
-    private static void ValidateAgainstContext(DbContext context, BulkConfig config, OperationType operationType)
-    {
-        // A session temp table disappears when the connection EF opened for a single command closes, so every operation
-        // that touches the staging table more than once must run inside a transaction (or on an already open connection).
-        var needsStagingTable = operationType != OperationType.Insert || config.SetOutputIdentity;
-        if (config.UseTempDB && needsStagingTable
-            && context.Database.CurrentTransaction is null
-            && context.Database.GetDbConnection().State != ConnectionState.Open)
-        {
-            throw new InvalidOperationException(
-                $"{nameof(BulkConfig.UseTempDB)} requires the bulk operation to run inside a transaction; " +
-                "otherwise the temp table is dropped before the operation finishes.");
-        }
     }
 
     private static void PublishResults<T>(BulkOperation<T> operation, BulkConfig? callerConfig) where T : class

@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/benchmarks/">
+    <Project Path="benchmarks/TSD.BulkExtensions.Benchmarks/TSD.BulkExtensions.Benchmarks.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/TSD.BulkExtensions.Core/TSD.BulkExtensions.Core.csproj" />
     <Project Path="src/TSD.BulkExtensions.PostgreSql/TSD.BulkExtensions.PostgreSql.csproj" />
