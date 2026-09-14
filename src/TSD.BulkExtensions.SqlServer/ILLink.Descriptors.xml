@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The adapter is discovered by name from TSD.BulkExtensions.Core (no static reference), so keep it when trimming. -->
+<linker>
+  <assembly fullname="TSD.BulkExtensions.SqlServer">
+    <type fullname="TSD.BulkExtensions.SqlServer.SqlServerBulkAdapter" preserve="all" />
+  </assembly>
+</linker>

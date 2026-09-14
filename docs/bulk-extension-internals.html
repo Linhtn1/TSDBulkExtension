@@ -1,0 +1,660 @@
+<meta charset="utf-8">
+<title>Giải phẫu Bulk Extension</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --bg: #F5F7FA;
+    --surface: #FFFFFF;
+    --surface-2: #EDF1F5;
+    --ink: #1B2430;
+    --muted: #5B6673;
+    --line: #D3DAE3;
+    --accent: #0F766E;
+    --accent-soft: #D9F1EE;
+    --pg: #B45309;
+    --pg-soft: #FCEBD5;
+    --code-bg: #1B2430;
+    --code-ink: #E6EAF0;
+    --code-kw: #7DD3C9;
+    --code-str: #F5C979;
+    --warn: #B42318;
+    --warn-soft: #FDE8E6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F1419;
+      --surface: #161C24;
+      --surface-2: #1E2630;
+      --ink: #E6EAF0;
+      --muted: #98A2B3;
+      --line: #2C3641;
+      --accent: #2DD4BF;
+      --accent-soft: #123A36;
+      --pg: #F59E0B;
+      --pg-soft: #3B2A0E;
+      --code-bg: #0B0F14;
+      --code-ink: #E6EAF0;
+      --code-kw: #5EEAD4;
+      --code-str: #FCD34D;
+      --warn: #F97066;
+      --warn-soft: #3A1614;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F1419;
+    --surface: #161C24;
+    --surface-2: #1E2630;
+    --ink: #E6EAF0;
+    --muted: #98A2B3;
+    --line: #2C3641;
+    --accent: #2DD4BF;
+    --accent-soft: #123A36;
+    --pg: #F59E0B;
+    --pg-soft: #3B2A0E;
+    --code-bg: #0B0F14;
+    --code-ink: #E6EAF0;
+    --code-kw: #5EEAD4;
+    --code-str: #FCD34D;
+    --warn: #F97066;
+    --warn-soft: #3A1614;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  a { color: var(--accent); }
+  a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .shell {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+    gap: 48px;
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 40px 32px 96px;
+  }
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 24px 16px 64px; }
+    nav.toc { position: static; }
+  }
+
+  nav.toc {
+    position: sticky;
+    top: 24px;
+    align-self: start;
+    font-size: 13px;
+  }
+  nav.toc .eyebrow { margin-bottom: 8px; }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--line); }
+  nav.toc li a {
+    display: block;
+    padding: 5px 0 5px 14px;
+    color: var(--muted);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    margin-left: -1px;
+  }
+  nav.toc li a:hover { color: var(--ink); border-left-color: var(--accent); }
+
+  main { min-width: 0; }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 {
+    font-family: "Sora", "IBM Plex Sans", sans-serif;
+    font-weight: 700;
+    font-size: 40px;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin: 8px 0 12px;
+    text-wrap: balance;
+  }
+  h2 {
+    font-family: "Sora", "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 24px;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    margin: 64px 0 12px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: "Sora", "IBM Plex Sans", sans-serif;
+    font-weight: 600;
+    font-size: 17px;
+    margin: 32px 0 8px;
+  }
+  .lede { font-size: 18px; color: var(--muted); max-width: 66ch; margin: 0 0 24px; }
+  p, ul, ol { max-width: 70ch; }
+  p { margin: 0 0 14px; }
+  ul, ol { padding-left: 22px; margin: 0 0 14px; }
+  li { margin-bottom: 6px; }
+  strong { font-weight: 600; }
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 0.9em;
+    background: var(--surface-2);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    padding: 16px 18px;
+    border-radius: 6px;
+    overflow-x: auto;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.55;
+    margin: 12px 0 20px;
+    max-width: 100%;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+  pre .kw { color: var(--code-kw); }
+  pre .str { color: var(--code-str); }
+  pre .cm { color: #8B97A6; font-style: italic; }
+
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 24px;
+    font-size: 13px; color: var(--muted);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    margin-bottom: 40px;
+  }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14px;
+    margin: 12px 0 24px;
+  }
+  .table-wrap { overflow-x: auto; }
+  th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+  th { font-weight: 600; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); background: var(--surface-2); }
+  td.num { font-variant-numeric: tabular-nums; text-align: right; }
+  td code { white-space: nowrap; }
+
+  figure { margin: 24px 0 28px; }
+  figure svg { max-width: 100%; height: auto; display: block; color: var(--ink); }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 8px; max-width: 70ch; }
+  .fig-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 16px 0 20px;
+    max-width: 70ch;
+  }
+  .callout.warn { border-left-color: var(--warn); background: var(--warn-soft); }
+  .callout.pg { border-left-color: var(--pg); background: var(--pg-soft); }
+  .callout p:last-child { margin-bottom: 0; }
+
+  .steps { counter-reset: step; list-style: none; padding: 0; max-width: 74ch; }
+  .steps li {
+    counter-increment: step;
+    display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px;
+    padding: 12px 0; border-bottom: 1px dashed var(--line);
+  }
+  .steps li::before {
+    content: counter(step);
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px; font-weight: 500;
+    width: 28px; height: 28px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--accent); color: #fff;
+  }
+  :root[data-theme="dark"] .steps li::before { color: #0F1419; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .steps li::before { color: #0F1419; } }
+  .steps li .t { font-weight: 600; }
+  .steps li p { margin: 2px 0 0; font-size: 15px; }
+
+  .two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 12px 0 20px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; }
+  .panel h4 { margin: 0 0 6px; font-family: "Sora", sans-serif; font-size: 14px; font-weight: 600; }
+  .panel.pg h4 { color: var(--pg); }
+  .panel.ss h4 { color: var(--accent); }
+  .panel ul { margin: 0; padding-left: 18px; font-size: 14px; }
+
+  .tag { display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 11px; padding: 1px 7px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); }
+  .tag.ok { color: var(--accent); border-color: var(--accent); }
+  .tag.no { color: var(--warn); border-color: var(--warn); }
+</style>
+
+<div class="shell">
+<nav class="toc" aria-label="Mục lục">
+  <div class="eyebrow">Mục lục</div>
+  <ol>
+    <li><a href="#tong-quan">Vì sao cần bulk</a></li>
+    <li><a href="#kien-truc">Kiến trúc 4 tầng</a></li>
+    <li><a href="#luong">Luồng điều phối</a></li>
+    <li><a href="#tableinfo">TableInfo: đọc model EF</a></li>
+    <li><a href="#sqlserver">SQL Server: BulkCopy + MERGE</a></li>
+    <li><a href="#identity">Lấy lại Identity đúng thứ tự</a></li>
+    <li><a href="#postgres">PostgreSQL: COPY + ON CONFLICT</a></li>
+    <li><a href="#graph">IncludeGraph</a></li>
+    <li><a href="#transaction">Transaction và ABP</a></li>
+    <li><a href="#batch">Batch trên IQueryable</a></li>
+    <li><a href="#truepos">Option TruePos đang dùng</a></li>
+    <li><a href="#cong-nghe">Bảng công nghệ</a></li>
+    <li><a href="#tsd">Điểm sẽ khác ở TSD.BulkExtensions</a></li>
+  </ol>
+</nav>
+
+<main>
+  <div class="eyebrow">TSD.BulkExtensions · tài liệu nội bộ</div>
+  <h1>Giải phẫu Bulk Extension</h1>
+  <p class="lede">Bên trong EFCore.BulkExtensions làm gì khi gọi <code>BulkInsertAsync</code>: từ metadata của EF Core, qua SqlBulkCopy hoặc COPY BINARY, tới câu MERGE và cách lấy lại Id. Đây là cơ chế mà TSD.BulkExtensions sẽ tái tạo.</p>
+  <div class="meta">
+    <span>Nguồn: fork MIT tại commit 5bf938a4 (01/2023) + bản 6.5.6 TruePos đang dùng</span>
+    <span>Cập nhật: 2026-09-11</span>
+  </div>
+
+  <h2 id="tong-quan">1. Vì sao cần bulk</h2>
+  <p><code>SaveChanges</code> của EF Core gửi mỗi entity thành một câu INSERT/UPDATE riêng (EF 6 gộp tối đa 42 câu một batch, nhưng vẫn là từng câu). Với 100.000 dòng, đó là hàng nghìn round-trip và server phải parse hàng nghìn statement. Bulk extension đi đường khác: đẩy toàn bộ dữ liệu xuống server bằng giao thức stream chuyên dụng, rồi chạy <strong>một</strong> câu SQL tập hợp.</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Thao tác</th><th>EF Core SaveChanges</th><th>Bulk extension</th></tr></thead>
+    <tbody>
+      <tr><td>Insert 100K dòng</td><td>~2.400 batch INSERT, change tracker giữ 100K entry</td><td>1 phiên SqlBulkCopy / COPY, không change tracker</td></tr>
+      <tr><td>Update 100K dòng</td><td>Phải load trước hoặc Attach từng entity, rồi UPDATE từng dòng</td><td>Stream vào bảng tạm, 1 câu MERGE / UPDATE FROM</td></tr>
+      <tr><td>Upsert</td><td>Không có API, phải tự query rồi rẽ nhánh</td><td>MERGE WHEN MATCHED / NOT MATCHED, hoặc ON CONFLICT</td></tr>
+      <tr><td>Lấy Id sinh ra</td><td>Tự động, vì từng câu INSERT trả về</td><td>Phải thiết kế riêng: OUTPUT / RETURNING + ánh xạ ngược</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Cột cuối là phần khó nhất. Stream dữ liệu thì nhanh, nhưng server không biết dòng nào của mình là entity nào trong bộ nhớ. Phần lớn độ phức tạp của thư viện nằm ở việc giải bài toán ánh xạ ngược này.</p>
+
+  <h2 id="kien-truc">2. Kiến trúc 4 tầng</h2>
+  <p>Thư viện có ~9.200 dòng nhưng chia rất rõ thành bốn tầng. Consumer chỉ chạm tầng 1. TSD.BulkExtensions giữ nguyên cấu trúc này.</p>
+  <figure>
+    <div class="fig-wrap">
+    <svg viewBox="0 0 860 400" role="img" aria-label="Bốn tầng: API mở rộng DbContext, bộ điều phối DbContextBulkTransaction, TableInfo đọc metadata, và adapter theo provider nói chuyện với database" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">
+      <defs>
+        <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <!-- Layer 1 -->
+      <rect x="20" y="20" width="820" height="62" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <text x="36" y="42" font-weight="500">1 · Public API</text>
+      <text x="36" y="64" fill="currentColor" opacity="0.7">DbContextBulkExtensions.BulkInsert / BulkUpdate / BulkDelete / BulkInsertOrUpdate / BulkRead / Truncate  +  BulkConfig</text>
+      <line x1="430" y1="82" x2="430" y2="110" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+      <text x="440" y="100" opacity="0.7">entities, BulkConfig, progress, type</text>
+      <!-- Layer 2 -->
+      <rect x="20" y="112" width="820" height="62" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <text x="36" y="134" font-weight="500">2 · Điều phối</text>
+      <text x="36" y="156" opacity="0.7">DbContextBulkTransaction.Execute → chọn nhánh: Insert thẳng · Merge · Read · Truncate · IncludeGraph · SaveChanges</text>
+      <line x1="430" y1="174" x2="430" y2="202" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+      <text x="440" y="192" opacity="0.7">TableInfo.CreateInstance(context, type, entities, op, config)</text>
+      <!-- Layer 3 -->
+      <rect x="20" y="204" width="820" height="62" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <text x="36" y="226" font-weight="500">3 · Metadata</text>
+      <text x="36" y="248" opacity="0.7">TableInfo: bảng, schema, cột↔property, PK, identity, rowversion, computed, default, owned, shadow, converter, include/exclude</text>
+      <line x1="430" y1="266" x2="430" y2="294" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr)"/>
+      <text x="440" y="284" opacity="0.7">SqlAdaptersMapping chọn adapter theo Database.ProviderName</text>
+      <!-- Layer 4 -->
+      <rect x="20" y="296" width="400" height="84" rx="4" fill="none" stroke="#0F766E" stroke-width="1.6"/>
+      <text x="36" y="318" font-weight="500" fill="#0F766E">4a · SqlServerAdapter</text>
+      <text x="36" y="340" opacity="0.8">SqlBulkCopy → #Temp → MERGE … OUTPUT</text>
+      <text x="36" y="360" opacity="0.8">SqlQueryBuilder (T-SQL)</text>
+      <rect x="440" y="296" width="400" height="84" rx="4" fill="none" stroke="#B45309" stroke-width="1.6"/>
+      <text x="456" y="318" font-weight="500" fill="#B45309">4b · PostgreSqlAdapter</text>
+      <text x="456" y="340" opacity="0.8">COPY BINARY → TEMP TABLE → INSERT … ON CONFLICT</text>
+      <text x="456" y="360" opacity="0.8">SqlQueryBuilderPostgreSql</text>
+    </svg>
+    </div>
+    <figcaption>Mỗi tầng chỉ biết tầng ngay dưới. Tầng 3 độc lập provider: cùng một TableInfo được cả hai adapter dùng. Tầng 4 là nơi toàn bộ SQL sinh ra.</figcaption>
+  </figure>
+  <p>Tầng 2 và 3 là phần “trung tính”, chiếm khoảng 45% code. Tầng 4 mỗi provider ~1.000 dòng cho SQL Server và ~450 dòng cho PostgreSQL. Đây là cơ sở để ước lượng: viết lại lõi + 2 provider tương đương khoảng 4.500 dòng code sản phẩm sau khi cắt tính năng không dùng.</p>
+
+  <h2 id="luong">3. Luồng điều phối</h2>
+  <p>Mọi lời gọi công khai đều đổ về một hàm: <code>DbContextBulkTransaction.Execute(context, type, entities, operationType, bulkConfig, progress)</code>. Hàm này quyết định đi nhánh nào.</p>
+  <figure>
+    <div class="fig-wrap">
+    <svg viewBox="0 0 860 330" role="img" aria-label="Cây quyết định của Execute: danh sách rỗng thì thoát; SaveChanges; IncludeGraph; Insert không cần Id thì BulkCopy thẳng; Read; Truncate; còn lại đi Merge" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">
+      <defs>
+        <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <rect x="20" y="20" width="200" height="40" rx="20" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <text x="120" y="45" text-anchor="middle" font-weight="500">Execute(entities, op, cfg)</text>
+      <!-- vertical spine -->
+      <line x1="120" y1="60" x2="120" y2="300" stroke="currentColor" stroke-width="1.2"/>
+      <!-- branches -->
+      <g>
+        <line x1="120" y1="90" x2="260" y2="90" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+        <text x="270" y="86" opacity="0.7">entities.Count == 0 (và không phải Sync/Truncate)</text>
+        <text x="270" y="102" font-weight="500">→ return, không chạm DB</text>
+      </g>
+      <g>
+        <line x1="120" y1="132" x2="260" y2="132" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+        <text x="270" y="128" opacity="0.7">op == SaveChanges</text>
+        <text x="270" y="144" font-weight="500">→ đọc ChangeTracker, gom theo trạng thái, gọi lại Execute từng nhóm</text>
+      </g>
+      <g>
+        <line x1="120" y1="174" x2="260" y2="174" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+        <text x="270" y="170" opacity="0.7">cfg.IncludeGraph == true</text>
+        <text x="270" y="186" font-weight="500">→ ExecuteWithGraph: sắp topo, Merge từng type theo thứ tự phụ thuộc</text>
+      </g>
+      <g>
+        <line x1="120" y1="216" x2="260" y2="216" stroke="#0F766E" stroke-width="1.6" marker-end="url(#arr2)"/>
+        <text x="270" y="212" opacity="0.7">op == Insert &amp;&amp; !cfg.SetOutputIdentity</text>
+        <text x="270" y="228" font-weight="500" fill="#0F766E">→ adapter.Insert: BulkCopy thẳng vào bảng đích, không bảng tạm</text>
+      </g>
+      <g>
+        <line x1="120" y1="258" x2="260" y2="258" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+        <text x="270" y="254" opacity="0.7">op == Read  /  op == Truncate</text>
+        <text x="270" y="270" font-weight="500">→ adapter.Read (temp + JOIN)  /  adapter.Truncate</text>
+      </g>
+      <g>
+        <line x1="120" y1="300" x2="260" y2="300" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr2)"/>
+        <text x="270" y="296" opacity="0.7">còn lại: Update, Delete, InsertOrUpdate, Sync, Insert+SetOutputIdentity</text>
+        <text x="270" y="312" font-weight="500">→ adapter.Merge: BulkCopy vào bảng tạm, rồi 1 câu SQL tập hợp</text>
+      </g>
+    </svg>
+    </div>
+    <figcaption>Điểm quan trọng: <code>BulkInsert</code> chỉ đi “đường nhanh” khi không cần lấy Id. Bật <code>SetOutputIdentity</code> là rẽ sang đường Merge, tốn thêm bảng tạm và một câu MERGE.</figcaption>
+  </figure>
+  <p>Trước khi rẽ nhánh, <code>TableInfo.CreateInstance</code> chạy để đọc model. Riêng nhánh Delete chỉ nạp cột khoá (<code>loadOnlyPKColumn</code>) vì MERGE … DELETE không cần cột khác.</p>
+
+  <h2 id="tableinfo">4. TableInfo: đọc model EF thành bản đồ cột</h2>
+  <p>Đây là file lớn nhất (1.375 dòng) và là nơi chứa 6 năm sửa lỗi. Nó không sinh SQL, chỉ trả lời câu hỏi: <em>với entity type này và config này, cột nào đi vào bảng tạm, cột nào so sánh, cột nào update, cột nào server tự sinh?</em></p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Câu hỏi</th><th>Đọc từ EF metadata</th><th>Kết quả trong TableInfo</th></tr></thead>
+    <tbody>
+      <tr><td>Bảng nào, schema nào</td><td><code>IEntityType.GetTableName()</code>, <code>GetSchema()</code>; SQL Server mặc định <code>dbo</code></td><td><code>FullTableName</code>, <code>FullTempTableName</code> = tên + <code>Temp</code> + 8 ký tự Guid</td></tr>
+      <tr><td>Property ↔ cột</td><td><code>IProperty.GetColumnName(StoreObjectIdentifier)</code>, bỏ cột null</td><td><code>PropertyColumnNamesDict</code>, <code>ColumnNamesTypesDict</code></td></tr>
+      <tr><td>Khoá để MATCH</td><td><code>FindPrimaryKey()</code>, hoặc <code>UpdateByProperties</code> nếu config chỉ định</td><td><code>PrimaryKeysPropertyColumnNameDict</code></td></tr>
+      <tr><td>Cột identity</td><td><code>PropertyHasIdentity</code> theo provider (SqlServer: <code>ValueGenerationStrategy.IdentityColumn</code>; Npgsql: <code>IdentityByDefault/Serial</code>)</td><td><code>IdentityColumnName</code>, <code>HasIdentity</code></td></tr>
+      <tr><td>Rowversion / timestamp</td><td><code>IsConcurrencyToken &amp;&amp; ValueGenerated == OnAddOrUpdate</code></td><td>Loại khỏi insert/update; thêm vào bảng tạm dạng <code>varbinary(8)</code> để OUTPUT trả về</td></tr>
+      <tr><td>Computed column</td><td><code>GetComputedColumnSql() != null</code></td><td>Loại hoàn toàn khỏi cột ghi</td></tr>
+      <tr><td>Default value</td><td><code>GetDefaultValueSql()</code> hoặc <code>GetDefaultValue()</code> + <code>ValueGenerated != Never</code></td><td>Nếu <em>toàn bộ</em> entity đều để default → bỏ cột khỏi INSERT để server tự điền (ví dụ <code>newsequentialid()</code>)</td></tr>
+      <tr><td>Owned type</td><td><code>GetNavigations().Where(TargetEntityType.IsOwned())</code></td><td>Làm phẳng thành cột <code>Owner_Prop</code>, đọc giá trị qua chuỗi property lồng</td></tr>
+      <tr><td>Shadow property</td><td><code>IsShadowProperty()</code>; chỉ khi <code>EnableShadowProperties</code></td><td>Giá trị lấy từ <code>context.Entry(e).Property(name)</code> hoặc callback <code>ShadowPropertyValue</code></td></tr>
+      <tr><td>Value converter</td><td><code>GetValueConverter()</code></td><td><code>ConvertibleColumnConverterDict</code>: gọi <code>ConvertToProvider</code> khi ghi, <code>ConvertFromProvider</code> khi đọc lại</td></tr>
+      <tr><td>Lọc cột</td><td>Config <code>PropertiesToInclude/Exclude</code> (+OnCompare, +OnUpdate)</td><td>Ba dict riêng: cột ghi, cột so sánh, cột update. Khoá luôn được thêm vào include</td></tr>
+      <tr><td>Đọc giá trị nhanh</td><td>Reflection một lần → compiled delegate</td><td><code>FastPropertyDict</code>: getter/setter biên dịch bằng expression tree, không dùng <code>PropertyInfo.GetValue</code> trong vòng lặp</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <div class="callout">
+    <p><strong>Ba dict cột</strong> là chìa khoá hiểu MERGE: <code>PropertyColumnNamesDict</code> quyết định cột nào <em>đi xuống</em> bảng tạm, <code>…CompareDict</code> quyết định điều kiện “có thay đổi không”, <code>…UpdateDict</code> quyết định <code>SET</code> cột nào. <code>PropertiesToInclude</code> của TruePos thu hẹp cả ba cùng lúc, đó là lý do <code>BulkUpdateAsync(list, opt =&gt; opt.PropertiesToInclude = [IsDraft])</code> chỉ ghi đè một cột.</p>
+  </div>
+
+  <h2 id="sqlserver">5. SQL Server: SqlBulkCopy + MERGE</h2>
+  <h3>Đường nhanh: Insert không cần Id</h3>
+  <p>Chuyển <code>IList&lt;T&gt;</code> thành <code>DataTable</code> (cột theo TableInfo, giá trị đã qua converter), mở <code>SqlBulkCopy</code> trên connection và transaction hiện tại của DbContext, <code>WriteToServer</code> thẳng vào bảng đích. Không có SQL nào được sinh. <code>BatchSize</code>, <code>BulkCopyTimeout</code>, <code>NotifyAfter</code>, <code>EnableStreaming</code> và <code>SqlBulkCopyOptions</code> đi thẳng vào object SqlBulkCopy.</p>
+  <h3>Đường Merge: mọi thao tác còn lại</h3>
+  <figure>
+    <div class="fig-wrap">
+    <svg viewBox="0 0 860 470" role="img" aria-label="Trình tự Merge trên SQL Server: tạo bảng tạm bằng SELECT TOP 0 INTO, BulkCopy vào bảng tạm, tạo bảng output nếu cần, chạy MERGE có OUTPUT INTO, đọc bảng output để gán Id, cuối cùng DROP hai bảng tạm" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">
+      <defs>
+        <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <!-- lifelines -->
+      <text x="130" y="28" text-anchor="middle" font-weight="500">SqlServerAdapter</text>
+      <text x="560" y="28" text-anchor="middle" font-weight="500">SQL Server</text>
+      <text x="760" y="28" text-anchor="middle" font-weight="500" opacity="0.7">tempdb</text>
+      <line x1="130" y1="40" x2="130" y2="450" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4"/>
+      <line x1="560" y1="40" x2="560" y2="450" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4"/>
+      <line x1="760" y1="40" x2="760" y2="450" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4" opacity="0.5"/>
+      <!-- 1 -->
+      <line x1="130" y1="70" x2="560" y2="70" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr3)"/>
+      <text x="140" y="64">① SELECT TOP 0 cols INTO [dbo].[TblTemp1a2b3c4d] FROM [dbo].[Tbl] LEFT JOIN … ON 1=0</text>
+      <text x="140" y="86" opacity="0.6">copy cấu trúc, LEFT JOIN 1=0 để bỏ ràng buộc IDENTITY</text>
+      <rect x="640" y="60" width="240" height="20" rx="3" fill="#0F766E" opacity="0.15"/>
+      <text x="760" y="74" text-anchor="middle" fill="#0F766E">[TblTemp…] rỗng</text>
+      <!-- 2 -->
+      <line x1="130" y1="126" x2="560" y2="126" stroke="#0F766E" stroke-width="1.8" marker-end="url(#arr3)"/>
+      <text x="140" y="120" fill="#0F766E" font-weight="500">② SqlBulkCopy.WriteToServer(DataTable) → TblTemp</text>
+      <text x="140" y="142" opacity="0.6">TDS bulk-load stream, theo BatchSize, gọi progress mỗi NotifyAfter</text>
+      <rect x="640" y="116" width="240" height="20" rx="3" fill="#0F766E" opacity="0.15"/>
+      <text x="760" y="130" text-anchor="middle" fill="#0F766E">N dòng, có cột Id (0 hoặc -k)</text>
+      <!-- 3 -->
+      <line x1="130" y1="182" x2="560" y2="182" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr3)"/>
+      <text x="140" y="176">③ [chỉ khi SetOutputIdentity] SELECT TOP 0 … INTO [TblTemp…Output]</text>
+      <rect x="640" y="172" width="240" height="20" rx="3" fill="currentColor" opacity="0.08"/>
+      <text x="760" y="186" text-anchor="middle" opacity="0.8">[…Output] rỗng</text>
+      <!-- 4 -->
+      <line x1="130" y1="238" x2="560" y2="238" stroke="#0F766E" stroke-width="1.8" marker-end="url(#arr3)"/>
+      <text x="140" y="232" fill="#0F766E" font-weight="500">④ MERGE [Tbl] WITH (HOLDLOCK) AS T USING (SELECT TOP N * FROM TblTemp ORDER BY Id) AS S</text>
+      <text x="140" y="254" opacity="0.6">ON T.Id = S.Id  WHEN NOT MATCHED INSERT … WHEN MATCHED AND EXISTS(…EXCEPT…) UPDATE …</text>
+      <text x="140" y="270" opacity="0.6">OUTPUT INSERTED.* INTO […Output]</text>
+      <rect x="640" y="228" width="240" height="20" rx="3" fill="currentColor" opacity="0.08"/>
+      <text x="760" y="242" text-anchor="middle" opacity="0.8">[…Output] = N dòng có Id thật</text>
+      <!-- 5 -->
+      <line x1="560" y1="318" x2="130" y2="318" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr3)"/>
+      <text x="140" y="312">⑤ SELECT * FROM […Output] ORDER BY Id  ← đọc về, gán Id (và rowversion) vào entity theo vị trí</text>
+      <!-- 6 -->
+      <line x1="130" y1="372" x2="560" y2="372" stroke="currentColor" stroke-width="1.2" marker-end="url(#arr3)"/>
+      <text x="140" y="366">⑥ DROP TABLE […Output]; DROP TABLE [TblTemp…]   (trong finally, kể cả khi lỗi)</text>
+      <!-- note -->
+      <rect x="20" y="405" width="820" height="40" rx="4" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3"/>
+      <text x="36" y="422" opacity="0.8">Bản 6.x tạo bảng tạm trong schema của bảng đích (không phải #temp) trừ khi UseTempDB=true; vì thế tên có hậu tố Guid để nhiều request</text>
+      <text x="36" y="438" opacity="0.8">chạy song song không đụng nhau. UseTempDB bắt buộc có transaction, nếu không #temp bị drop trước khi MERGE chạy.</text>
+    </svg>
+    </div>
+    <figcaption>Sáu round-trip cho một thao tác Merge, trong đó chỉ ② và ④ nặng. Delete rút gọn còn ①②④⑥ với <code>WHEN MATCHED THEN DELETE</code>.</figcaption>
+  </figure>
+  <p>Câu MERGE thật mà <code>SqlQueryBuilder.MergeTable</code> sinh ra cho <code>BulkInsertOrUpdateAsync(list, opt =&gt; opt.SetOutputIdentity = true)</code> trên một bảng có identity <code>Id</code> và cột <code>Code, Name, Status</code>:</p>
+<pre><code><span class="kw">DECLARE</span> @temp <span class="kw">INT</span>;
+<span class="kw">MERGE</span> [dbo].[CrmSanPham] <span class="kw">WITH</span> (HOLDLOCK) <span class="kw">AS</span> T
+<span class="kw">USING</span> (<span class="kw">SELECT TOP</span> 3 * <span class="kw">FROM</span> [dbo].[CrmSanPhamTemp8f2c1e0a] <span class="kw">ORDER BY</span> [Id]) <span class="kw">AS</span> S
+<span class="kw">ON</span> T.[Id] = S.[Id]
+<span class="kw">WHEN NOT MATCHED BY TARGET THEN</span>
+    <span class="kw">INSERT</span> ([Code], [Name], [Status]) <span class="kw">VALUES</span> (S.[Code], S.[Name], S.[Status])
+<span class="kw">WHEN MATCHED AND EXISTS</span> (<span class="kw">SELECT</span> S.[Code], S.[Name], S.[Status]
+                        <span class="kw">EXCEPT SELECT</span> T.[Code], T.[Name], T.[Status]) <span class="kw">THEN</span>
+    <span class="kw">UPDATE SET</span> T.[Code] = S.[Code], T.[Name] = S.[Name], T.[Status] = S.[Status]
+<span class="kw">OUTPUT</span> INSERTED.[Id], INSERTED.[Code], INSERTED.[Name], INSERTED.[Status]
+    <span class="kw">INTO</span> [dbo].[CrmSanPhamTemp8f2c1e0aOutput];
+</code></pre>
+  <ul>
+    <li><strong><code>WITH (HOLDLOCK)</code></strong>: giữ range lock suốt câu MERGE để hai request upsert cùng khoá không chèn trùng. TruePos tắt ở nhiều chỗ (<code>WithHoldlock = false</code>) để giảm deadlock khi biết chắc không có ghi đồng thời.</li>
+    <li><strong><code>EXISTS (SELECT … EXCEPT SELECT …)</code></strong>: chỉ UPDATE khi thực sự có cột khác; xử lý NULL đúng, khác với so sánh <code>&lt;&gt;</code>. Đây là lý do rowversion không bị nhảy nếu dữ liệu không đổi.</li>
+    <li><strong><code>SELECT TOP N … ORDER BY</code></strong> trong USING: ép SQL Server duyệt source theo thứ tự khoá để OUTPUT ra đúng thứ tự, phục vụ ánh xạ Id ở mục 6.</li>
+    <li><strong><code>DECLARE @temp</code></strong>: khi không có cột nào để update nhưng vẫn cần OUTPUT dòng MATCHED, thư viện thêm <code>WHEN MATCHED THEN UPDATE SET @temp = 1</code> làm no-op.</li>
+  </ul>
+
+  <h2 id="identity">6. Lấy lại Identity đúng thứ tự</h2>
+  <p>Bảng OUTPUT trả về N dòng có Id thật, nhưng SQL Server không hứa thứ tự nào. Thư viện giải bằng thủ thuật <strong>PreserveInsertOrder</strong> trong <code>TableInfo.CheckToSetIdentityForPreserveOrder</code>:</p>
+  <ol class="steps">
+    <li><div><span class="t">Gán Id âm tạm thời</span><p>Trước khi BulkCopy, entity có <code>Id == 0</code> được gán lần lượt <code>-N, -N+1, …, -1</code> theo đúng thứ tự trong list. Entity đã có Id dương giữ nguyên.</p></div></li>
+    <li><div><span class="t">Bảng tạm giữ Id âm</span><p>Cột Id trong bảng tạm không phải identity (nhờ <code>LEFT JOIN … ON 1=0</code> khi tạo), nên nhận giá trị âm bình thường. MERGE với <code>ORDER BY Id</code> duyệt các dòng mới theo thứ tự -N → -1.</p></div></li>
+    <li><div><span class="t">Id âm không bao giờ khớp</span><p><code>ON T.Id = S.Id</code> với Id âm luôn NOT MATCHED, nên đi nhánh INSERT và server sinh identity mới tăng dần theo đúng thứ tự duyệt.</p></div></li>
+    <li><div><span class="t">Đọc OUTPUT, ghép theo vị trí</span><p><code>SELECT … FROM Output ORDER BY Id</code>: dòng thứ k của kết quả ứng với entity mới thứ k. Với upsert, entity có Id sẵn được sort trước theo Id, entity mới nối sau, rồi ghép 1-1.</p></div></li>
+    <li><div><span class="t">Reset khi không có OUTPUT</span><p>Nếu chỉ Insert thường, Id âm được đặt lại về 0 sau khi ghi để entity trong bộ nhớ không mang giá trị rác.</p></div></li>
+  </ol>
+  <div class="callout warn">
+    <p><strong>Điểm yếu đã biết</strong>: nếu <code>UpdateByProperties</code> khớp nhiều dòng trong bảng cho một entity, ánh xạ 1-1 vỡ. Fork MIT thêm cơ chế thứ hai <code>UseOriginalIndexToIdentityMappingColumn</code>: thêm cột <code>__OriginalIndex</code> vào bảng tạm và OUTPUT, ghép theo chỉ số thay vì theo thứ tự. TSD.BulkExtensions sẽ dùng cách chỉ số làm mặc định vì đơn giản và không phụ thuộc thứ tự MERGE.</p>
+  </div>
+
+  <h2 id="postgres">7. PostgreSQL: COPY BINARY + ON CONFLICT</h2>
+  <p>PostgreSQL không có SqlBulkCopy và không có MERGE (trước bản 15). Adapter dùng hai công cụ khác nhưng cùng hình dạng luồng.</p>
+  <div class="two">
+    <div class="panel ss">
+      <h4>SQL Server</h4>
+      <ul>
+        <li>Stream: <code>SqlBulkCopy.WriteToServer(DataTable)</code></li>
+        <li>Bảng tạm: <code>SELECT TOP 0 … INTO</code> trong schema đích</li>
+        <li>Upsert: <code>MERGE … WHEN MATCHED / NOT MATCHED</code></li>
+        <li>Delete: <code>MERGE … WHEN MATCHED THEN DELETE</code></li>
+        <li>Lấy Id: <code>OUTPUT INSERTED.* INTO bảng output</code>, đọc sau</li>
+        <li>Khoá tuỳ chọn: bất kỳ cột nào, không cần index</li>
+      </ul>
+    </div>
+    <div class="panel pg">
+      <h4>PostgreSQL</h4>
+      <ul>
+        <li>Stream: <code>NpgsqlBinaryImporter</code> = <code>COPY … FROM STDIN (FORMAT BINARY)</code>, ghi từng cột với kiểu PG rõ ràng</li>
+        <li>Bảng tạm: <code>CREATE TEMP TABLE … (LIKE đích INCLUDING DEFAULTS)</code> hoặc bảng thường nếu <code>UseTempDB=false</code></li>
+        <li>Upsert: <code>INSERT … SELECT … FROM temp ON CONFLICT (keys) DO UPDATE SET c = EXCLUDED.c</code></li>
+        <li>Delete: <code>DELETE FROM đích USING temp WHERE keys</code></li>
+        <li>Lấy Id: <code>RETURNING *</code> ngay trong câu INSERT, đọc bằng query EF</li>
+        <li>Khoá tuỳ chọn: <strong>bắt buộc có unique index</strong>. Không có thì thư viện tự <code>CREATE UNIQUE INDEX</code> rồi drop sau</li>
+      </ul>
+    </div>
+  </div>
+  <p>Câu SQL PostgreSQL tương đương cho cùng thao tác upsert:</p>
+<pre><code><span class="kw">INSERT INTO</span> "public"."CrmSanPham" ("Id", "Code", "Name", "Status")
+    (<span class="kw">SELECT</span> "Id", "Code", "Name", "Status" <span class="kw">FROM</span> "public"."CrmSanPhamTemp8f2c1e0a")
+<span class="kw">ON CONFLICT</span> ("Id")
+<span class="kw">DO UPDATE SET</span> "Code" = EXCLUDED."Code", "Name" = EXCLUDED."Name", "Status" = EXCLUDED."Status"
+<span class="kw">RETURNING</span> "Id", "Code", "Name", "Status";
+</code></pre>
+  <div class="callout pg">
+    <p><strong>Hai điểm khác biệt ngầm</strong>. Một: <code>ON CONFLICT</code> không có mệnh đề “chỉ update khi khác”, nên mọi dòng khớp đều bị UPDATE và trigger/rowversion đều chạy. Hai: <code>BulkUpdate</code> thuần (không insert) vẫn đi qua <code>INSERT … ON CONFLICT DO UPDATE</code>; entity không tồn tại sẽ bị <em>insert mới</em> thay vì bỏ qua. Đây là issue #171 còn mở ở fork MIT. TSD.BulkExtensions sẽ sinh <code>UPDATE … FROM temp</code> riêng cho Update.</p>
+  </div>
+  <p>Giá trị đi qua COPY BINARY phải khai báo đúng kiểu PostgreSQL (<code>writer.Write(value, "numeric")</code>). Adapter đọc <code>GetColumnType()</code> từ EF rồi chuẩn hoá: <code>character varying(50)</code> → <code>character</code>, <code>numeric(18,2)</code> → <code>numeric</code>. Enum có converter được ép về kiểu provider trước khi ghi.</p>
+
+  <h2 id="graph">8. IncludeGraph: insert cả cây đối tượng</h2>
+  <p>Đơn hàng trong TruePos là một cây: <code>DDonHang</code> → <code>DonHangChiTiet</code> → <code>DonHangChiTietLoHan</code>, cộng thêm <code>DonHangCoupon</code>, <code>DObjectLedger</code>. Gọi <code>BulkInsertAsync(new[]{ order }, opt =&gt; opt.IncludeGraph = true)</code> thì thư viện tự ghi tất cả, theo đúng thứ tự khoá ngoại.</p>
+  <figure>
+    <div class="fig-wrap">
+    <svg viewBox="0 0 860 300" role="img" aria-label="IncludeGraph: duyệt navigation để làm phẳng cây thành các nút phụ thuộc, sắp xếp topo, rồi Merge từng loại theo lượt; sau mỗi lượt gán khoá ngoại cho các nút con từ Id vừa sinh" xmlns="http://www.w3.org/2000/svg" font-family="IBM Plex Mono, ui-monospace, monospace" font-size="12">
+      <defs>
+        <marker id="arr4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+          <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+        </marker>
+      </defs>
+      <!-- left: object graph -->
+      <text x="20" y="30" font-weight="500">Cây trong bộ nhớ</text>
+      <rect x="20" y="44" width="150" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <text x="95" y="63" text-anchor="middle">DDonHang (Id=0)</text>
+      <rect x="60" y="104" width="150" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <text x="135" y="123" text-anchor="middle">DonHangChiTiet ×3</text>
+      <rect x="100" y="164" width="170" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <text x="185" y="183" text-anchor="middle">DonHangChiTietLoHan ×5</text>
+      <rect x="60" y="224" width="150" height="30" rx="4" fill="none" stroke="currentColor" stroke-width="1.2"/>
+      <text x="135" y="243" text-anchor="middle">DonHangCoupon ×2</text>
+      <line x1="95" y1="74" x2="95" y2="119" stroke="currentColor" stroke-width="1"/>
+      <line x1="95" y1="119" x2="60" y2="119" stroke="currentColor" stroke-width="1" marker-end="url(#arr4)"/>
+      <line x1="135" y1="134" x2="135" y2="179" stroke="currentColor" stroke-width="1"/>
+      <line x1="135" y1="179" x2="100" y2="179" stroke="currentColor" stroke-width="1" marker-end="url(#arr4)"/>
+      <line x1="95" y1="74" x2="95" y2="239" stroke="currentColor" stroke-width="1" opacity="0.5"/>
+      <line x1="95" y1="239" x2="60" y2="239" stroke="currentColor" stroke-width="1" marker-end="url(#arr4)" opacity="0.5"/>
+      <text x="30" y="285" opacity="0.6">navigation collection / reference</text>
+      <!-- middle arrow -->
+      <line x1="300" y1="150" x2="360" y2="150" stroke="currentColor" stroke-width="1.4" marker-end="url(#arr4)"/>
+      <text x="330" y="138" text-anchor="middle" opacity="0.7">GetFlatGraph</text>
+      <text x="330" y="168" text-anchor="middle" opacity="0.7">TopologicalSort</text>
+      <!-- right: passes -->
+      <text x="380" y="30" font-weight="500">Các lượt Merge, mỗi lượt một type, trong 1 transaction</text>
+      <g>
+        <rect x="380" y="44" width="460" height="46" rx="4" fill="#0F766E" opacity="0.12"/>
+        <text x="392" y="62" font-weight="500">Lượt 1 · DDonHang</text>
+        <text x="392" y="80" opacity="0.8">Merge 1 dòng, OUTPUT → Id = 9001. Gán DonHangId=9001 cho 3 ChiTiet + 2 Coupon</text>
+      </g>
+      <g>
+        <rect x="380" y="100" width="460" height="46" rx="4" fill="#0F766E" opacity="0.12"/>
+        <text x="392" y="118" font-weight="500">Lượt 2 · DonHangChiTiet</text>
+        <text x="392" y="136" opacity="0.8">Merge 3 dòng, OUTPUT → Id 5501..5503. Gán ChiTietId cho 5 LoHan</text>
+      </g>
+      <g>
+        <rect x="380" y="156" width="460" height="46" rx="4" fill="#0F766E" opacity="0.12"/>
+        <text x="392" y="174" font-weight="500">Lượt 3 · DonHangChiTietLoHan</text>
+        <text x="392" y="192" opacity="0.8">Merge 5 dòng. Không có dependent nào nữa</text>
+      </g>
+      <g>
+        <rect x="380" y="212" width="460" height="46" rx="4" fill="#0F766E" opacity="0.12"/>
+        <text x="392" y="230" font-weight="500">Lượt 4 · DonHangCoupon</text>
+        <text x="392" y="248" opacity="0.8">Merge 2 dòng. Commit transaction</text>
+      </g>
+      <text x="380" y="285" opacity="0.6">Thứ tự lượt do topological sort quyết định: cha luôn trước con. Cùng type tự tham chiếu (cây cha-con) chạy thêm lượt phụ.</text>
+    </svg>
+    </div>
+    <figcaption>IncludeGraph là vòng lặp “Merge một type → lấy Id → điền FK cho con → Merge type tiếp”. Mỗi lượt là một Merge đầy đủ ở mục 5, nên chi phí = số type trong cây × 6 round-trip.</figcaption>
+  </figure>
+  <p>Chi tiết cài đặt trong <code>DbContextBulkTransactionGraphUtil</code>:</p>
+  <ul>
+    <li>Ép ba config: <code>PreserveInsertOrder = true</code>, <code>SetOutputIdentity = true</code>, <code>EnableShadowProperties = true</code>. Không có ba thứ này thì không lấy được Id cha để điền vào con, đặc biệt khi FK là shadow property do EF tự tạo.</li>
+    <li><code>GraphUtil.GetFlatGraph</code> duyệt <code>entityType.GetNavigations()</code> đệ quy, dùng <code>Dictionary&lt;object, GraphDependency&gt;</code> theo reference để chặn vòng lặp cha↔con.</li>
+    <li>Sắp xếp bằng <code>MedallionTopologicalSort</code> trên quan hệ “entity A phụ thuộc principal B”.</li>
+    <li>Lọc trùng khoá bằng <code>GetUniqueEntities</code>: cùng một sản phẩm xuất hiện trong nhiều dòng chi tiết chỉ Merge một lần.</li>
+    <li>Owned type nằm cùng bảng với owner thì bỏ qua lượt riêng, đã được làm phẳng ở TableInfo.</li>
+    <li>Nếu chưa có transaction, tự mở <code>BeginTransaction</code> và commit ở cuối; có lỗi giữa chừng thì dispose để rollback toàn bộ cây.</li>
+  </ul>
+
+  <h2 id="transaction">9. Transaction, connection và ABP</h2>
+  <p>Thư viện <strong>không</strong> tự mở transaction cho thao tác đơn lẻ. Nó lấy <code>context.Database.CurrentTransaction</code>; nếu có thì mọi lệnh (SqlBulkCopy, tạo bảng tạm, MERGE, drop) chạy trong đó. Nếu không có, các lệnh chạy autocommit từng câu.</p>
+  <p>Trong ABP, mọi AppService method chạy trong <code>UnitOfWork</code>, và UoW đã <code>BeginTransaction</code> trên DbContext trước khi code nghiệp vụ chạy. Vì thế một chuỗi <code>BulkDeleteAsync</code> rồi <code>BulkInsertAsync</code> trong cùng method là atomic. Nếu UoW bị tắt (<code>[UnitOfWork(IsDisabled = true)]</code>) hoặc dùng <code>IsTransactional = false</code>, bulk sẽ chạy autocommit và bảng tạm được tạo/drop ngoài transaction.</p>
+  <div class="callout">
+    <p>Adapter mở connection bằng <code>context.Database.OpenConnection()</code> và đóng bằng <code>CloseConnection()</code> trong <code>finally</code>. EF Core đếm tham chiếu: nếu connection đã mở bởi transaction ABP thì <code>CloseConnection</code> không thực sự đóng. Thiết kế này phải giữ nguyên ở TSD.BulkExtensions, nếu không sẽ làm hỏng transaction của UoW.</p>
+  </div>
+
+  <h2 id="batch">10. Batch trên IQueryable</h2>
+  <p><code>query.BatchDeleteAsync()</code> và <code>BatchUpdateAsync(x =&gt; new T { … })</code> không stream dữ liệu gì. <code>BatchUtil</code> lấy câu SELECT mà EF dịch từ LINQ (<code>query.ToQueryString()</code> + tham số), rồi <em>cắt chuỗi</em>: bỏ phần <code>SELECT …</code>, giữ <code>FROM … WHERE …</code>, ghép thành <code>DELETE [alias] FROM … WHERE …</code>. Với ORDER BY/TOP phải bọc CTE. Với UPDATE phải parse expression tree của lambda thành mệnh đề SET.</p>
+  <p>Cách này khoảng 1.000 dòng và mong manh vì phụ thuộc định dạng SQL EF sinh ra ở từng phiên bản. EF Core 7 đưa <code>ExecuteDelete</code> / <code>ExecuteUpdate</code> vào lõi, làm đúng việc này bằng query pipeline. Vì vậy TSD.BulkExtensions không viết lại BatchUtil: EF 8/10 gọi thẳng API lõi, EF 6 chuyển sang <code>BatchDeleteAsync(predicate)</code> của ABP EFPlus vốn đã có sẵn trong TruePos.</p>
+
+  <h2 id="truepos">11. Option TruePos đang dùng và ý nghĩa bên dưới</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Option</th><th>Ví dụ trong TruePos</th><th>Ảnh hưởng đến luồng</th></tr></thead>
+    <tbody>
+      <tr><td><code>SetOutputIdentity</code></td><td><code>AccountingEntryRepository.BulkInsertAsync(list, opt =&gt; opt.SetOutputIdentity = true)</code></td><td>Insert rời đường nhanh, đi Merge: thêm bảng tạm, bảng output, MERGE, đọc lại. Cần khi phải dùng Id ngay sau insert (ví dụ ghi sổ cái).</td></tr>
+      <tr><td><code>IncludeGraph</code></td><td><code>DDonHangRepository.BulkInsertOrUpdateAsync(new[]{order}, opt =&gt; { opt.IncludeGraph = true; opt.SetOutputIdentity = true; })</code></td><td>Mục 8. Một transaction, N lượt Merge theo số type trong cây. Phần lớn call site chỉ có 1 đơn hàng, tức là bulk đang được dùng như “save graph” tiện lợi chứ không vì hiệu năng.</td></tr>
+      <tr><td><code>PreserveInsertOrder</code></td><td>Kèm IncludeGraph ở <code>DVanDonsManager</code>, <code>BAWithDrawManager</code></td><td>Mặc định đã true; đặt lại tường minh. Kích hoạt thủ thuật Id âm ở mục 6.</td></tr>
+      <tr><td><code>WithHoldlock = false</code></td><td><code>EcoProductRepository.BulkInsertAsync(list, opt =&gt; opt.WithHoldlock = false)</code></td><td>Bỏ <code>WITH (HOLDLOCK)</code> khỏi MERGE. Giảm lock nhưng hai request upsert cùng khoá có thể chèn trùng. Chỉ có tác dụng khi đi đường Merge.</td></tr>
+      <tr><td><code>PropertiesToInclude</code></td><td><code>_crmSanPhamRepository.BulkUpdateAsync(drafts, opt =&gt; opt.PropertiesToInclude = [nameof(CrmSanPham.IsDraft)])</code></td><td>Thu hẹp cả ba dict cột: bảng tạm chỉ có Id + IsDraft, MERGE chỉ SET IsDraft. Update một phần rất rẻ.</td></tr>
+      <tr><td><code>BatchSize</code></td><td><code>opt.BatchSize = TsdConst.BatchSize_1000</code> ở EcoOrdersWorkerManager</td><td>Đi vào <code>SqlBulkCopy.BatchSize</code>: server commit nội bộ mỗi 1.000 dòng trong phiên bulk-load. Không ảnh hưởng MERGE.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="cong-nghe">12. Bảng công nghệ</h2>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Thành phần</th><th>Công nghệ</th><th>Vai trò</th></tr></thead>
+    <tbody>
+      <tr><td>Stream SQL Server</td><td><code>Microsoft.Data.SqlClient.SqlBulkCopy</code></td><td>Giao thức TDS bulk-load, nhận <code>DataTable</code> hoặc <code>IDataReader</code>. Nhanh nhất có thể trên SQL Server.</td></tr>
+      <tr><td>Stream PostgreSQL</td><td><code>NpgsqlConnection.BeginBinaryImport</code></td><td><code>COPY … FROM STDIN (FORMAT BINARY)</code>. Ghi từng giá trị kèm kiểu PG.</td></tr>
+      <tr><td>Thao tác tập hợp</td><td>T-SQL <code>MERGE … OUTPUT</code>; PG <code>INSERT … ON CONFLICT … RETURNING</code>, <code>DELETE … USING</code></td><td>Một câu cho N dòng; trả về giá trị server sinh.</td></tr>
+      <tr><td>Đọc model</td><td>EF Core metadata: <code>IModel</code>, <code>IEntityType</code>, <code>IProperty</code>, <code>INavigation</code>, <code>StoreObjectIdentifier</code>, <code>ValueConverter</code></td><td>Nguồn sự thật duy nhất về bảng/cột. Không cần attribute riêng của thư viện.</td></tr>
+      <tr><td>Đọc/ghi property</td><td><code>FastProperty</code>: expression tree biên dịch thành <code>Func&lt;object, object&gt;</code></td><td>Tránh reflection trong vòng lặp N dòng.</td></tr>
+      <tr><td>Sắp xếp graph</td><td><code>MedallionTopologicalSort</code></td><td>Thứ tự cha trước con cho IncludeGraph.</td></tr>
+      <tr><td>Chạy SQL</td><td><code>Database.ExecuteSqlRaw</code>, <code>Database.CurrentTransaction</code>, <code>GetDbConnection()</code></td><td>Dùng lại connection/transaction của DbContext, không tạo connection riêng.</td></tr>
+      <tr><td>Đọc bảng output</td><td>Compiled query thủ công qua <code>FromSqlRaw</code> + <code>AsNoTracking</code></td><td>Tránh memory leak của EF khi query cache nhận SQL động (tên bảng tạm khác nhau mỗi lần).</td></tr>
+      <tr><td>Quan sát</td><td><code>System.Diagnostics.ActivitySource</code></td><td>Span cho mỗi thao tác bulk, hiện trong OpenTelemetry.</td></tr>
+    </tbody>
+  </table>
+  </div>
+
+  <h2 id="tsd">13. Điểm sẽ khác ở TSD.BulkExtensions</h2>
+  <p>Giữ nguyên hình dạng luồng ở mục 2–9 vì đó là cách đúng để làm bulk trên hai engine này. Thay đổi nằm ở chi tiết cài đặt:</p>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Hạng mục</th><th>EFCore.BulkExtensions</th><th>TSD.BulkExtensions</th></tr></thead>
+    <tbody>
+      <tr><td>Nguồn dữ liệu cho SqlBulkCopy</td><td><code>DataTable</code> dựng toàn bộ trong RAM</td><td><code>EntityDataReader&lt;T&gt;</code> cài <code>IDataReader</code>, stream từng dòng. 1 triệu dòng không nhân đôi bộ nhớ.</td></tr>
+      <tr><td>Ánh xạ Id</td><td>Theo thứ tự OUTPUT + thủ thuật Id âm (mặc định), chỉ số là tuỳ chọn</td><td>Cột <code>__Index</code> trong bảng tạm và OUTPUT là mặc định. Không phụ thuộc thứ tự MERGE.</td></tr>
+      <tr><td>PostgreSQL BulkUpdate</td><td>Đi qua <code>INSERT … ON CONFLICT</code>, có thể insert nhầm</td><td><code>UPDATE đích SET … FROM temp WHERE keys</code>. Chỉ update.</td></tr>
+      <tr><td>Bảng tạm SQL Server</td><td>Bảng thật trong schema đích, tên có Guid</td><td>Ưu tiên <code>#local temp</code> khi có transaction (ABP luôn có); fallback bảng thật khi không.</td></tr>
+      <tr><td>Option không hỗ trợ</td><td>Bỏ qua âm thầm hoặc lỗi khó hiểu</td><td>Ném <code>NotSupportedException</code> ngay khi tạo TableInfo, nêu tên option.</td></tr>
+      <tr><td>Batch IQueryable</td><td><code>BatchUtil</code> cắt chuỗi SQL</td><td>EF 8/10: gọi <code>ExecuteDelete/ExecuteUpdate</code>. EF 6: không hỗ trợ.</td></tr>
+      <tr><td>Provider</td><td>SQL Server, PostgreSQL, MySQL, SQLite</td><td>SQL Server, PostgreSQL. Cấu trúc adapter mở để thêm sau.</td></tr>
+      <tr><td>Kiểm thử</td><td>57 test, TestContainers</td><td>Port toàn bộ làm acceptance spec + test riêng cho IncludeGraph trên cây đơn hàng và transaction ABP UoW.</td></tr>
+      <tr><td>API công khai</td><td>—</td><td>Giữ nguyên 100% signature, đổi namespace <code>TSD.BulkExtensions</code>.</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>Tóm lại: thư viện này về bản chất là <strong>một bộ sinh SQL có hiểu model EF</strong>, cộng một lớp stream dữ liệu theo provider. Không có phép màu, nhưng có rất nhiều trường hợp biên đã được trả giá. Viết lại nghĩa là giữ luồng, giữ test, và bỏ những nhánh không ai dùng.</p>
+</main>
+</div>

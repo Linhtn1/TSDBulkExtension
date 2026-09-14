@@ -1,0 +1,30 @@
+<Project>
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest</AnalysisLevel>
+    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true' or '$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <!-- Shared package metadata. Src projects opt in via IsPackable in src/Directory.Build.props. -->
+  <PropertyGroup>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <!-- CI overrides the suffix (env VersionSuffix=preview.<run>) so assemblies and packages carry the same version. -->
+    <VersionSuffix Condition="'$(VersionSuffix)' == ''">preview</VersionSuffix>
+    <Authors>TSD</Authors>
+    <Company>Thai Son</Company>
+    <Product>TSD.BulkExtensions</Product>
+    <Copyright>Copyright (c) 2026 Thai Son. Portions Copyright (c) 2017 borisdj, (c) 2023 Jindrich Cincibuch (MIT).</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>EntityFrameworkCore EFCore Bulk BulkInsert BulkUpdate BulkDelete Merge SqlServer PostgreSQL</PackageTags>
+  </PropertyGroup>
+
+  <!-- Every project in this repo targets the three EF Core lines in use. -->
+  <PropertyGroup>
+    <TsdTargetFrameworks>net6.0;net8.0;net10.0</TsdTargetFrameworks>
+  </PropertyGroup>
+
+</Project>

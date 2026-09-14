@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/TSD.BulkExtensions.Core/TSD.BulkExtensions.Core.csproj" />
+    <Project Path="src/TSD.BulkExtensions.PostgreSql/TSD.BulkExtensions.PostgreSql.csproj" />
+    <Project Path="src/TSD.BulkExtensions.SqlServer/TSD.BulkExtensions.SqlServer.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TSD.BulkExtensions.Tests.PostgreSql/TSD.BulkExtensions.Tests.PostgreSql.csproj" />
+    <Project Path="tests/TSD.BulkExtensions.Tests.Shared/TSD.BulkExtensions.Tests.Shared.csproj" />
+    <Project Path="tests/TSD.BulkExtensions.Tests.SqlServer/TSD.BulkExtensions.Tests.SqlServer.csproj" />
+  </Folder>
+</Solution>

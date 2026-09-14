@@ -1,0 +1,16 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+
+  <PropertyGroup>
+    <TargetFrameworks>$(TsdTargetFrameworks)</TargetFrameworks>
+    <IsPackable>false</IsPackable>
+    <!-- Dev machines may only have the newest runtime installed; net6.0/net8.0 test builds roll forward to it.
+         CI installs every runtime so the roll-forward never triggers there. -->
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+
+  <!-- net6.0 is out of support; transitive test dependencies warn about it. Accepted until the EF 6 consumers move on. -->
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net6.0'">
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+  </PropertyGroup>
+</Project>

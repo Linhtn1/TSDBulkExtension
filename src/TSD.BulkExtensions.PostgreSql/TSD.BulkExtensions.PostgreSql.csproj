@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>TSD.BulkExtensions.PostgreSql</PackageId>
+    <Description>PostgreSQL adapter for TSD.BulkExtensions: COPY BINARY streaming plus INSERT ... ON CONFLICT for Insert, Update, Delete, Upsert and Read.</Description>
+    <RootNamespace>TSD.BulkExtensions.PostgreSql</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TSD.BulkExtensions.Core\TSD.BulkExtensions.Core.csproj" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="ILLink.Descriptors.xml" LogicalName="ILLink.Descriptors.xml" />
+  </ItemGroup>
+
+</Project>

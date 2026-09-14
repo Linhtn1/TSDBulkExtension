@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <IsTestProject>false</IsTestProject>
+    <RootNamespace>TSD.BulkExtensions.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\TSD.BulkExtensions.Core\TSD.BulkExtensions.Core.csproj" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Testcontainers" />
+    <PackageReference Include="xunit" />
+  </ItemGroup>
+
+</Project>
