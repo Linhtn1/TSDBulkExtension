@@ -61,7 +61,7 @@ public sealed class SqlServerBulkAdapter : IBulkAdapter
         var context = operation.Context;
         var (insertColumns, _) = map.GetInsertColumns(operation.Entities, operation.Values);
 
-        var scope = isAsync ? await ConnectionScope.OpenAsync(context, cancellationToken).ConfigureAwait(false) : ConnectionScope.Open(context);
+        var scope = await ConnectionScope.OpenAsync(context, isAsync, cancellationToken).ConfigureAwait(false);
         try
         {
             using var bulkCopy = CreateBulkCopy(scope, operation.Config, SqlServerSqlBuilder.TableName(map), insertColumns, operation.Entities.Count, operation.Progress, includeIndexColumn: false);
@@ -76,7 +76,11 @@ public sealed class SqlServerBulkAdapter : IBulkAdapter
                 bulkCopy.WriteToServer(reader);
             }
 
-            operation.Progress?.Invoke(1m);
+            var count = operation.Entities.Count;
+            if (operation.Progress is { } progress && count % operation.Config.GetNotifyAfter(count) != 0)
+            {
+                progress(1m); // SqlRowsCopied did not fire on the last row
+            }
         }
         finally
         {
@@ -130,8 +134,7 @@ public sealed class SqlServerBulkAdapter : IBulkAdapter
 
         if (progress is not null && totalRows > 0)
         {
-            var notifyAfter = config.NotifyAfter ?? config.BatchSize;
-            bulkCopy.NotifyAfter = notifyAfter > 0 ? notifyAfter : totalRows;
+            bulkCopy.NotifyAfter = config.GetNotifyAfter(totalRows);
             bulkCopy.SqlRowsCopied += (_, e) => progress(Math.Min(1m, (decimal)e.RowsCopied / totalRows));
         }
 

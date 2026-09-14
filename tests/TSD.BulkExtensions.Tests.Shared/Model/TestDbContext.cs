@@ -51,6 +51,7 @@ public class TestDbContext : DbContext
             b.ToTable("Order");
             b.Property(x => x.Code).HasMaxLength(50).IsRequired();
             b.Property(x => x.Total).HasPrecision(18, 2);
+            b.Property(x => x.CreatedAt).HasDefaultValueSql(IsSqlServer ? "GETUTCDATE()" : "now()");
             b.HasIndex(x => x.Code).IsUnique();
         });
 
@@ -58,6 +59,7 @@ public class TestDbContext : DbContext
         {
             b.ToTable("SyncRow");
             b.Property(x => x.Key).HasMaxLength(50).IsRequired();
+            b.Property(x => x.Category).HasMaxLength(50);
         });
 
         modelBuilder.Entity<Payment>(b =>

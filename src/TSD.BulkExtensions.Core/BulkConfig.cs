@@ -65,12 +65,12 @@ public class BulkConfig
     /// <summary>These properties are never written in the UPDATE branch of a merge.</summary>
     public List<string>? PropertiesToExcludeOnUpdate { get; set; }
 
-    /// <summary>Match rows on these properties instead of the primary key. PostgreSQL requires a unique index covering them.</summary>
+    /// <summary>Match rows on these properties instead of the primary key. No unique index is required on either provider.</summary>
     public List<string>? UpdateByProperties { get; set; }
 
     /// <summary>
-    /// Extra SQL predicate appended to the update branch. Receives the target and source aliases
-    /// (<c>T</c>/<c>S</c> on SQL Server, table name/<c>EXCLUDED</c> on PostgreSQL).
+    /// Extra SQL predicate appended to the update branch. Receives the target and source (staging) aliases:
+    /// <c>T</c>/<c>S</c> on SQL Server, <c>t</c>/<c>s</c> on PostgreSQL. Quote column names for the provider.
     /// </summary>
     public Func<string, string, string>? OnConflictUpdateWhereSql { get; set; }
 
@@ -90,8 +90,22 @@ public class BulkConfig
     /// <summary>Emit <c>WITH (HOLDLOCK)</c> on the MERGE statement (SQL Server only). Default <c>true</c>.</summary>
     public bool WithHoldlock { get; set; } = true;
 
-    /// <summary>Flags passed to SqlBulkCopy (SQL Server only). Ignored by other providers.</summary>
+    /// <summary>
+    /// Flags passed to SqlBulkCopy. <see cref="Microsoft.Data.SqlClient.SqlBulkCopyOptions.KeepIdentity"/> is honoured by
+    /// every provider (explicit identity values are inserted; PostgreSQL then moves the sequence past them); the other
+    /// flags only affect SQL Server.
+    /// </summary>
     public SqlBulkCopyOptions SqlBulkCopyOptions { get; set; } = SqlBulkCopyOptions.Default;
+
+    /// <summary>Whether explicit identity values are written (the KeepIdentity flag), on any provider.</summary>
+    internal bool KeepIdentity => SqlBulkCopyOptions.HasFlag(SqlBulkCopyOptions.KeepIdentity);
+
+    /// <summary>Rows between two progress callbacks: <see cref="NotifyAfter"/>, else <see cref="BatchSize"/>, else the whole list (single batch).</summary>
+    internal int GetNotifyAfter(int totalRows)
+    {
+        var notifyAfter = NotifyAfter ?? BatchSize;
+        return notifyAfter > 0 ? notifyAfter : Math.Max(1, totalRows);
+    }
 
     /// <summary>
     /// Also insert/update the navigation graph reachable from each entity, parents before children, in one transaction.

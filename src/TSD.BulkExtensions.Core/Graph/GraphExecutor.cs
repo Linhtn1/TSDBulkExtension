@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.EntityFrameworkCore.Storage;
+using TSD.BulkExtensions.Transactions;
 
 namespace TSD.BulkExtensions.Graph;
 
@@ -30,16 +30,8 @@ internal static class GraphExecutor
         var childConfig = CreateChildConfig(operation.Config, context, shadowValues);
         var stats = operation.Config.CalculateStats ? new StatsInfo() : null;
 
-        var ownsTransaction = context.Database.CurrentTransaction is null && System.Transactions.Transaction.Current is null;
-        IDbContextTransaction? transaction = null;
-        if (ownsTransaction)
-        {
-            transaction = isAsync
-                ? await context.Database.BeginTransactionAsync(cancellationToken).ConfigureAwait(false)
-                : context.Database.BeginTransaction();
-        }
-
-        try
+        // One transaction (ours or the caller's) and one open connection for every pass.
+        await using var unit = await OperationUnit.BeginAsync(context, isAsync, cancellationToken).ConfigureAwait(false);
         {
             var remaining = nodes;
             while (remaining.Count > 0)
@@ -87,17 +79,7 @@ internal static class GraphExecutor
                 remaining = remaining.Where(n => !n.Saved).ToList();
             }
 
-            if (transaction is not null)
-            {
-                if (isAsync)
-                {
-                    await transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    transaction.Commit();
-                }
-            }
+            await unit.CommitAsync(cancellationToken).ConfigureAwait(false);
 
             if (stats is not null)
             {
@@ -105,21 +87,6 @@ internal static class GraphExecutor
             }
 
             operation.Progress?.Invoke(1m);
-        }
-        finally
-        {
-            if (transaction is not null)
-            {
-                // Disposing an uncommitted transaction rolls it back.
-                if (isAsync)
-                {
-                    await transaction.DisposeAsync().ConfigureAwait(false);
-                }
-                else
-                {
-                    transaction.Dispose();
-                }
-            }
         }
     }
 
