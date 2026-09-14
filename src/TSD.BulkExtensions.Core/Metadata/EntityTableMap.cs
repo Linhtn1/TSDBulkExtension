@@ -81,6 +81,12 @@ public sealed class EntityTableMap
     /// <summary>Write columns with a server default; skipped on insert when every entity leaves them at the CLR default.</summary>
     public IReadOnlyList<ColumnMap> DefaultValueColumns { get; private set; }
 
+    /// <summary>
+    /// True when the operation resolves to nothing (an Update whose include/exclude lists leave no column and
+    /// <see cref="BulkConfig.IgnoreUnknownPropertyNames"/> is set); adapters return without touching the database.
+    /// </summary>
+    public bool IsNoOp { get; private set; }
+
     /// <summary>Whether the identity column is written explicitly (SqlBulkCopyOptions.KeepIdentity).</summary>
     public bool KeepIdentity { get; private set; }
 
@@ -164,7 +170,7 @@ public sealed class EntityTableMap
             Join(config.PropertiesToIncludeOnUpdate), Join(config.PropertiesToExcludeOnUpdate),
             Join(config.UpdateByProperties),
             config.EnableShadowProperties, config.IgnoreRowVersion, config.IgnoreUnknownPropertyNames,
-            config.SqlBulkCopyOptions.HasFlag(Microsoft.Data.SqlClient.SqlBulkCopyOptions.KeepIdentity));
+            config.KeepIdentity);
     }
 
     private static EntityTableMap Build(DbContext context, Type clrType, BulkConfig config, OperationType operationType, Func<IProperty, bool> isIdentity)
@@ -182,7 +188,7 @@ public sealed class EntityTableMap
         map.IdentityColumn = columns.FirstOrDefault(c => c.IsIdentity);
         map.RowVersionColumn = config.IgnoreRowVersion ? null : columns.FirstOrDefault(c => c.IsRowVersion);
         map.DiscriminatorColumn = columns.FirstOrDefault(c => c.IsDiscriminator);
-        map.KeepIdentity = config.SqlBulkCopyOptions.HasFlag(Microsoft.Data.SqlClient.SqlBulkCopyOptions.KeepIdentity);
+        map.KeepIdentity = config.KeepIdentity;
 
         map.MatchColumns = ResolveMatchColumns(map, config);
         map.SelectColumns(config, operationType);
@@ -302,7 +308,10 @@ public sealed class EntityTableMap
         var modelClrType = property.ClrType;
         var providerClrType = converter?.ProviderClrType ?? mapping?.ClrType ?? modelClrType;
         providerClrType = Nullable.GetUnderlyingType(providerClrType) ?? providerClrType;
-        if (providerClrType.IsEnum)
+        // A type mapping whose CLR type is still the enum means the provider handles it natively (Npgsql enum mapping);
+        // without any mapping information the enum is sent as its underlying number.
+        var nativeEnum = converter is null && mapping is not null && providerClrType.IsEnum;
+        if (providerClrType.IsEnum && !nativeEnum)
         {
             providerClrType = Enum.GetUnderlyingType(providerClrType);
         }
@@ -330,7 +339,7 @@ public sealed class EntityTableMap
         else if (isShadow)
         {
             var name = property.Name;
-            getter = (entity, values) => ToProvider(values.ShadowValue is not null ? values.ShadowValue(entity, name) : values.Context.Entry(entity).Property(name).CurrentValue, converter);
+            getter = (entity, values) => ToProvider(values.ShadowValue is not null ? values.ShadowValue(entity, name) : values.Context.Entry(entity).Property(name).CurrentValue, converter, nativeEnum);
             setter = (entity, values, value) => values.Context.Entry(entity).Property(name).CurrentValue = FromProvider(value, converter, modelClrType);
         }
         else
@@ -342,7 +351,7 @@ public sealed class EntityTableMap
             var declaringType = pathPrefix is null ? property.DeclaringType.ClrType : ownerClrType;
 
             var rawGetter = PropertyAccessor.CreateGetter(declaringType, memberPath);
-            getter = (entity, _) => ToProvider(rawGetter(entity), converter);
+            getter = (entity, _) => ToProvider(rawGetter(entity), converter, nativeEnum);
 
             if (PropertyAccessor.CanWrite(member))
             {
@@ -371,7 +380,7 @@ public sealed class EntityTableMap
             && property.ClrType != typeof(Guid);
     }
 
-    private static object? ToProvider(object? value, ValueConverter? converter)
+    private static object? ToProvider(object? value, ValueConverter? converter, bool nativeEnum)
     {
         if (value is null)
         {
@@ -383,8 +392,8 @@ public sealed class EntityTableMap
             return converter.ConvertToProvider(value);
         }
 
-        // Enums normally carry a converter from the type mapping; this only covers a provider that maps them natively.
-        return value is Enum e
+        // Enums normally carry a converter from the type mapping; without one they go as numbers unless the provider maps them natively.
+        return value is Enum e && !nativeEnum
             ? Convert.ChangeType(e, Enum.GetUnderlyingType(e.GetType()), System.Globalization.CultureInfo.InvariantCulture)
             : value;
     }
@@ -402,12 +411,14 @@ public sealed class EntityTableMap
         }
 
         var target = Nullable.GetUnderlyingType(modelClrType) ?? modelClrType;
-        if (target.IsEnum)
+        if (target.IsInstanceOfType(value))
         {
-            return Enum.ToObject(target, value);
+            return value;
         }
 
-        return target.IsInstanceOfType(value) ? value : Convert.ChangeType(value, target, System.Globalization.CultureInfo.InvariantCulture);
+        return target.IsEnum
+            ? Enum.ToObject(target, value)
+            : Convert.ChangeType(value, target, System.Globalization.CultureInfo.InvariantCulture);
     }
 
     private static IReadOnlyList<ColumnMap> ResolveMatchColumns(EntityTableMap map, BulkConfig config)
@@ -500,6 +511,14 @@ public sealed class EntityTableMap
             update = update.Where(c => !excluded.Contains(c));
         }
         UpdateColumns = update.ToArray();
+
+        if (operationType == OperationType.Update && UpdateColumns.Count == 0)
+        {
+            // A graph pass whose type has none of the listed properties has nothing to do; a direct call is a configuration error.
+            IsNoOp = config.IgnoreUnknownPropertyNames
+                ? true
+                : throw new InvalidBulkConfigException("BulkUpdate has no columns to update after applying the include/exclude options.");
+        }
 
         // Non-key columns with a default, plus a Guid primary key the server fills (newsequentialid / gen_random_uuid).
         DefaultValueColumns = WriteColumns

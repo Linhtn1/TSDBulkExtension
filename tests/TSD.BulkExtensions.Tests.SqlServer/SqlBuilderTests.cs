@@ -6,19 +6,19 @@ using Xunit;
 namespace TSD.BulkExtensions.Tests.SqlServer;
 
 /// <summary>Shape of the generated T-SQL, without executing it.</summary>
-public sealed class SqlBuilderTests : SqlServerTestBase
+[Collection(SqlServerCollection.Name)]
+public sealed class SqlBuilderTests : ProviderTestBase
 {
-    public SqlBuilderTests(SqlServerFixture fixture) : base(fixture)
-    {
-    }
+    private readonly SqlServerFixture _fixture;
 
-    private (EntityTableMap Map, BulkConfig Config, BulkValueContext Values) Build(TestDbContext context, OperationType op, Action<BulkConfig>? configure = null)
+    public SqlBuilderTests(SqlServerFixture fixture) => _fixture = fixture;
+
+    protected override TestDbContext CreateContext() => _fixture.CreateContext();
+
+    private static (EntityTableMap Map, BulkConfig Config, BulkValueContext Values) Build(TestDbContext context, OperationType op, Action<BulkConfig>? configure = null)
     {
-        var config = new BulkConfig();
-        configure?.Invoke(config);
-        config.Prepare(op);
-        var adapter = BulkAdapterRegistry.Resolve(context);
-        return (EntityTableMap.Create(context, typeof(Item), config, op, adapter.IsIdentityColumn), config, new BulkValueContext(context));
+        var (map, config) = BuildMap(context, typeof(Item), op, configure);
+        return (map, config, new BulkValueContext(context));
     }
 
     [Fact]

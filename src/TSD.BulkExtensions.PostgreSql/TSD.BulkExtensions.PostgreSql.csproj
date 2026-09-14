@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <PackageId>TSD.BulkExtensions.PostgreSql</PackageId>
-    <Description>PostgreSQL adapter for TSD.BulkExtensions: COPY BINARY streaming plus INSERT ... ON CONFLICT for Insert, Update, Delete, Upsert and Read.</Description>
+    <Description>PostgreSQL adapter for TSD.BulkExtensions: COPY BINARY streaming plus UPDATE ... FROM / INSERT ... SELECT / DELETE ... USING for Insert, Update, Delete, Upsert, Sync and Read.</Description>
     <RootNamespace>TSD.BulkExtensions.PostgreSql</RootNamespace>
   </PropertyGroup>
 

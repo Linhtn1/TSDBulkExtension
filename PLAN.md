@@ -1,6 +1,15 @@
 # TSD.BulkExtensions — Kế hoạch thay thế EFCore.BulkExtensions
 
-Ngày: 2026-09-11. Cập nhật 2026-09-14. Trạng thái: **P0 merged (PR #1), P1 xong** trên branch `feature/sqlserver-adapter`. Kế tiếp: P2 PostgreSQL adapter.
+Ngày: 2026-09-11. Cập nhật 2026-09-14. Trạng thái: **P0 merged (PR #1), P1 merged (PR #2), P2 xong** trên branch `feature/postgresql-adapter`. Kế tiếp: P3 (edge case, README, benchmark PG) hoặc P4 pilot.
+
+P2 đã dựng (PostgreSQL đầy đủ):
+- `Core/Transactions/OperationUnit`: tách từ SqlServer executor — mở transaction riêng khi không có transaction bao ngoài, dùng chung cho 2 provider.
+- `PostgreSql/PostgreSqlSqlBuilder`: `CREATE TEMPORARY TABLE` staging (+`__Index` PK), `COPY … FORMAT BINARY`, gán khoá trước khi insert (`nextval(pg_get_serial_sequence)` theo thứ tự `__Index`, hoặc default SQL như `gen_random_uuid()`), `UPDATE … FROM` (chỉ hàng có cột compare khác, `IS DISTINCT FROM`), `INSERT … SELECT … WHERE NOT EXISTS … ORDER BY __Index` (+`OVERRIDING SYSTEM VALUE`), `DELETE … USING`, `DELETE … WHERE NOT EXISTS` (sync), đọc lại bằng JOIN theo khoá (không dựa vào thứ tự RETURNING).
+- `PostgreSql/PostgreSqlMergeExecutor`: staged path cho Update/Delete/Upsert/Sync/Insert+SetOutputIdentity, Read, Truncate.
+- `PostgreSql/PostgreSqlBulkAdapter`: đường nhanh `NpgsqlBinaryImporter` cho Insert thuần; `IsIdentityColumn` (IdentityAlways/ByDefault/Serial).
+- Test: refactor `InsertTests/MergeTests/GraphTests/BatchTests` thành base provider-agnostic trong `Tests.Shared` (`ProviderTestBase` + hook `SupportsRowVersion`), lớp mỏng ở 2 provider; thêm PG `SqlBuilderTests`. Tổng 468 (SQL Server 78/80/80, PostgreSQL 76/78/78 theo net6/8/10).
+- Khác thiết kế 4.3: upsert là UPDATE + INSERT (không `ON CONFLICT`, không cần unique index trên `UpdateByProperties`), không atomic với writer đồng thời (ghi trong README). `TRUNCATE` không `RESTART IDENTITY`.
+- Gate 2 (code-review high) trên P2: 10 finding đã fix — Sync xoá nhầm hàng vừa insert (DELETE chạy trước INSERT), Insert staged copy CLR default của cột server-default (staging chỉ chứa cột INSERT chọn), KeepIdentity không đẩy sequence (`setval` sau insert), enum native của Npgsql bị ép về int, keyless + SetOutputIdentity sinh SQL lỗi (báo lỗi rõ), `IS NOT DISTINCT FROM` chỉ khi list có NULL, `BatchSize=0` gọi progress mỗi hàng (`BulkConfig.GetNotifyAfter` dùng chung), bỏ `nullWhenDefault`, gộp helper command vào `ConnectionScope` + `EntityTableMap.IsNoOp`, sửa doc option; `GraphExecutor` dùng `OperationUnit`; temp table `ON COMMIT DROP` khi tự mở transaction; đọc lại thẳng từ staging cho Insert thuần. Test 494/494 (SQL Server 82/84/84, PG 80/82/82).
 
 P1 đã dựng (SQL Server đầy đủ):
 - `Core/Metadata`: `EntityTableMap`, `ColumnMap`, `PropertyAccessor` (đọc model EF thành bản đồ cột, include/exclude, khoá match, identity, default, rowversion, owned, discriminator, converter).
@@ -145,11 +154,12 @@ Multi-target: **1 package, 3 TFM** `net6.0;net8.0;net10.0`, PackageReference the
 ### 4.3 PostgreSQL adapter
 
 - Insert: `NpgsqlBinaryImporter` (`COPY ... FROM STDIN (FORMAT BINARY)`).
-- Upsert: COPY vào `CREATE TEMP TABLE ... ON COMMIT DROP` → `INSERT ... SELECT ... ON CONFLICT (keys) DO UPDATE SET ... [WHERE OnConflictUpdateWhereSql] RETURNING`. Yêu cầu unique index trên `UpdateByProperties`; validate và báo lỗi rõ nếu thiếu.
-- Update thuần: `UPDATE t SET ... FROM tmp WHERE keys` (không đi qua ON CONFLICT — tránh issue #171 của fork).
-- Delete: `DELETE FROM t USING tmp WHERE keys`.
-- Read: join temp table.
-- Truncate: `TRUNCATE TABLE ... RESTART IDENTITY` tuỳ chọn.
+- Staged: COPY vào `CREATE TEMPORARY TABLE` (+`__Index`), gán khoá cho hàng mới ngay trong staging (sequence theo `__Index` / default SQL) khi `SetOutputIdentity`.
+- Upsert: `UPDATE t SET ... FROM stg WHERE keys AND (compare) IS DISTINCT FROM ... [AND OnConflictUpdateWhereSql]` rồi `INSERT ... SELECT ... FROM stg WHERE NOT EXISTS (...) ORDER BY __Index`. Không dùng `ON CONFLICT` nên không cần unique index trên `UpdateByProperties`; đổi lại không atomic với writer đồng thời (đã ghi README).
+- Update thuần: `UPDATE ... FROM stg` (tránh issue #171 của fork).
+- Delete: `DELETE FROM t USING stg WHERE keys`; Sync: thêm `DELETE ... WHERE NOT EXISTS`.
+- Read / ghi giá trị server sinh về: `SELECT stg.__Index, t.cols FROM stg JOIN t ON keys`.
+- Truncate: `TRUNCATE TABLE` (không RESTART IDENTITY).
 
 ## 5. Harvest từ fork MIT (hợp pháp, có attribution)
 

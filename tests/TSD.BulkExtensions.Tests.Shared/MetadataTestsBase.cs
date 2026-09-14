@@ -18,13 +18,7 @@ public abstract class MetadataTestsBase
 
     /// <summary>Builds a map the way an adapter does: prepared config, provider identity detection.</summary>
     public static EntityTableMap Map(TestDbContext context, Type type, OperationType op, Action<BulkConfig>? configure = null)
-    {
-        var config = new BulkConfig();
-        configure?.Invoke(config);
-        config.Prepare(op);
-        var adapter = BulkAdapterRegistry.Resolve(context);
-        return EntityTableMap.Create(context, type, config, op, adapter.IsIdentityColumn);
-    }
+        => ProviderTestBase.BuildMap(context, type, op, configure).Map;
 
     private static BulkValueContext Values(DbContext context) => new(context);
 

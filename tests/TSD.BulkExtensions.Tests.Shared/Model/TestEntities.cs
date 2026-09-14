@@ -43,6 +43,9 @@ public class SyncRow
     public long Id { get; set; }
     public string Key { get; set; } = string.Empty;
     public int Value { get; set; }
+
+    /// <summary>Nullable, non-key column used as a custom match key in the null-safe matching tests.</summary>
+    public string? Category { get; set; }
 }
 
 /// <summary>TPH base with a private key setter: exercises derived-only columns on a base-typed list and write-back through a non-public setter.</summary>
@@ -70,6 +73,9 @@ public class Order
     public string Code { get; set; } = string.Empty;
     public DateTime OrderDate { get; set; }
     public decimal Total { get; set; }
+
+    /// <summary>Server default (GETUTCDATE() / now()); left unset by the tests so the default has to apply.</summary>
+    public DateTime CreatedAt { get; set; }
 
     public ICollection<OrderLine> Lines { get; set; } = new List<OrderLine>();
 }
